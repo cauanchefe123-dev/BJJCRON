@@ -35,6 +35,7 @@ import { StudentTrainingJournal } from './components/student/StudentTrainingJour
 import { TeacherObservationsView } from './components/observations/TeacherObservationsView';
 import { ReportsView } from './components/reports/ReportsView';
 import { AcademySettings } from './components/settings/AcademySettings';
+import { ErrorBoundary } from './components/layout/ErrorBoundary';
 
 import { PaymentRecord, Student } from './types';
 import { AuthModal } from './components/auth/AuthModal';
@@ -104,73 +105,79 @@ function MainApp() {
 
           {/* Page Content */}
           <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
-            {activeTab === 'dashboard' && (
-              currentUser.role === 'ADMIN' ? (
-                <AdminDashboard
-                  onNavigate={setActiveTab}
-                  onOpenCheckin={() => setIsQuickCheckinOpen(true)}
-                />
-              ) : currentUser.role === 'PROFESSOR' ? (
-                <TeacherDashboard
-                  onNavigate={setActiveTab}
-                  onOpenCheckin={() => setIsQuickCheckinOpen(true)}
-                />
-              ) : (
-                <StudentDashboard
-                  onNavigate={setActiveTab}
-                  onOpenPixModal={handleOpenPixForId}
+            <div key={activeTab} className="w-full">
+              {activeTab === 'dashboard' && (
+                currentUser.role === 'ADMIN' ? (
+                  <AdminDashboard
+                    onNavigate={setActiveTab}
+                    onOpenCheckin={() => setIsQuickCheckinOpen(true)}
+                  />
+                ) : currentUser.role === 'PROFESSOR' ? (
+                  <TeacherDashboard
+                    onNavigate={setActiveTab}
+                    onOpenCheckin={() => setIsQuickCheckinOpen(true)}
+                  />
+                ) : (
+                  <StudentDashboard
+                    onNavigate={setActiveTab}
+                    onOpenPixModal={handleOpenPixForId}
+                    onOpenEditModal={handleOpenEditStudent}
+                  />
+                )
+              )}
+
+              {activeTab === 'students' && (
+                <StudentList
+                  onOpenAddModal={() => setIsAddStudentOpen(true)}
                   onOpenEditModal={handleOpenEditStudent}
+                  onOpenGraduationModal={handleOpenGraduation}
+                  onOpenCardModal={(st) => {
+                    setSelectedStudentCard(st);
+                    setActiveTab('card');
+                  }}
                 />
-              )
-            )}
+              )}
 
-            {activeTab === 'students' && (
-              <StudentList
-                onOpenAddModal={() => setIsAddStudentOpen(true)}
-                onOpenEditModal={handleOpenEditStudent}
-                onOpenGraduationModal={handleOpenGraduation}
-                onOpenCardModal={(st) => {
-                  setSelectedStudentCard(st);
-                  setActiveTab('card');
-                }}
-              />
-            )}
-
-            {activeTab === 'attendance' && (
-              <AttendanceManager
-                onOpenCheckin={() => setIsQuickCheckinOpen(true)}
-              />
-            )}
-
-            {activeTab === 'teachers' && <TeacherManager />}
-
-            {activeTab === 'classes' && <ClassManager />}
-
-            {activeTab === 'financial' && (
-              <PaymentManager
-                onOpenPixModal={(p) => setPixModalPayment(p)}
-              />
-            )}
-
-            {activeTab === 'card' && (
-              <div className="py-4">
-                <DigitalMembershipCard
-                  student={selectedStudentCard || currentStudent}
+              {activeTab === 'attendance' && (
+                <AttendanceManager
+                  onOpenCheckin={() => setIsQuickCheckinOpen(true)}
                 />
-              </div>
-            )}
+              )}
 
-            {activeTab === 'journal' && <StudentTrainingJournal />}
+              {activeTab === 'teachers' && <TeacherManager />}
 
-            {activeTab === 'observations' && <TeacherObservationsView />}
+              {activeTab === 'classes' && <ClassManager />}
 
-            {activeTab === 'ranking' && <RankingBoard />}
+              {activeTab === 'financial' && (
+                <PaymentManager
+                  onOpenPixModal={(p) => setPixModalPayment(p)}
+                />
+              )}
 
-            {activeTab === 'timer' && (currentUser.role === 'ADMIN' || currentUser.role === 'PROFESSOR') && <MatTimer />}
+              {activeTab === 'card' && (
+                <div className="py-4">
+                  <DigitalMembershipCard
+                    student={selectedStudentCard || currentStudent}
+                  />
+                </div>
+              )}
 
-            {activeTab === 'reports' && <ReportsView />}
+              {activeTab === 'journal' && <StudentTrainingJournal />}
 
-            {activeTab === 'settings' && <AcademySettings />}
+              {activeTab === 'observations' && <TeacherObservationsView />}
+
+              {activeTab === 'ranking' && <RankingBoard />}
+
+              {activeTab === 'timer' && (currentUser.role === 'ADMIN' || currentUser.role === 'PROFESSOR') && (
+                <ErrorBoundary onNavigateHome={() => setActiveTab('dashboard')}>
+                  <MatTimer />
+                </ErrorBoundary>
+              )}
+
+              {activeTab === 'reports' && <ReportsView />}
+
+              {activeTab === 'settings' && <AcademySettings />}
+            </div>
           </main>
         </div>
       </div>

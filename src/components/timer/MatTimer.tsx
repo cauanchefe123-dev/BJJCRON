@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, Minimize2, Flame, ShieldAlert, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, Minimize2, Flame } from 'lucide-react';
 
 export const MatTimer: React.FC = () => {
   const [roundTimeMinutes, setRoundTimeMinutes] = useState(6);
@@ -14,12 +14,16 @@ export const MatTimer: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const timerContainerRef = useRef<HTMLDivElement>(null);
+  const soundEnabledRef = useRef<boolean>(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
 
-  // Web Audio Synth for Tatame Chimes
-  const playChime = (type: 'START' | 'REST' | 'WARNING' | 'FINISHED') => {
-    if (!soundEnabled) return;
+  // Web Audio Synth for Tatame Chimes (safely closes context after playback)
+  const playChime = useCallback((type: 'START' | 'REST' | 'WARNING' | 'FINISHED') => {
+    if (!soundEnabledRef.current) return;
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -27,86 +31,108 @@ export const MatTimer: React.FC = () => {
       osc.connect(gain);
       gain.connect(ctx.destination);
 
+      const now = ctx.currentTime;
+
       if (type === 'START') {
-        osc.frequency.setValueAtTime(880, ctx.currentTime); // High A
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.8);
+        osc.frequency.setValueAtTime(880, now); // High A
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        osc.start(now);
+        osc.stop(now + 0.8);
       } else if (type === 'REST') {
-        osc.frequency.setValueAtTime(440, ctx.currentTime); // Low A
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.2);
-        osc.start();
-        osc.stop(ctx.currentTime + 1.2);
+        osc.frequency.setValueAtTime(440, now); // Low A
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+        osc.start(now);
+        osc.stop(now + 1.2);
       } else if (type === 'WARNING') {
-        osc.frequency.setValueAtTime(660, ctx.currentTime);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.3);
+        osc.frequency.setValueAtTime(660, now);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
       } else if (type === 'FINISHED') {
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-        gain.gain.setValueAtTime(0.4, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2.0);
-        osc.start();
-        osc.stop(ctx.currentTime + 2.0);
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0);
+        osc.start(now);
+        osc.stop(now + 2.0);
       }
+
+      setTimeout(() => {
+        try {
+          if (ctx.state !== 'closed') {
+            ctx.close();
+          }
+        } catch {
+          // ignore
+        }
+      }, 2500);
     } catch {
       // Audio context fallbacks ignored safely
     }
-  };
+  }, []);
 
+  // Stable Refs for current state to avoid re-triggering intervals
+  const isRestingRef = useRef(isResting);
+  isRestingRef.current = isResting;
+  const currentRoundRef = useRef(currentRound);
+  currentRoundRef.current = currentRound;
+  const totalRoundsRef = useRef(totalRounds);
+  totalRoundsRef.current = totalRounds;
+  const restTimeSecondsRef = useRef(restTimeSeconds);
+  restTimeSecondsRef.current = restTimeSeconds;
+  const roundTimeMinutesRef = useRef(roundTimeMinutes);
+  roundTimeMinutesRef.current = roundTimeMinutes;
+
+  // Single clean countdown and transition interval
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    if (!isRunning) return;
 
-    if (isRunning) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => {
-          // Warning at 10 seconds
-          if (prev === 11) {
-            playChime('WARNING');
-          }
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev === 11) {
+          playChime('WARNING');
+        }
 
-          if (prev <= 1) {
-            // Round / Rest Switch Logic
-            if (!isResting) {
-              // Fight round finished
-              if (currentRound >= totalRounds) {
-                // All rounds finished
-                setIsRunning(false);
-                playChime('FINISHED');
-                return 0;
-              } else {
-                // Switch to Rest
-                setIsResting(true);
-                playChime('REST');
-                return restTimeSeconds;
-              }
+        if (prev <= 1) {
+          // Time is up for current phase
+          if (!isRestingRef.current) {
+            // Finished fight round
+            if (currentRoundRef.current >= totalRoundsRef.current) {
+              setIsRunning(false);
+              playChime('FINISHED');
+              return 0;
             } else {
-              // Rest finished -> Start next round
-              setIsResting(false);
-              setCurrentRound(r => r + 1);
-              playChime('START');
-              return roundTimeMinutes * 60;
+              setIsResting(true);
+              playChime('REST');
+              return restTimeSecondsRef.current;
             }
+          } else {
+            // Finished rest phase -> start next round
+            setIsResting(false);
+            setCurrentRound(r => r + 1);
+            playChime('START');
+            return roundTimeMinutesRef.current * 60;
           }
+        }
 
-          return prev - 1;
-        });
-      }, 1000);
-    }
+        return prev - 1;
+      });
+    }, 1000);
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRunning, isResting, currentRound, totalRounds, restTimeSeconds, roundTimeMinutes]);
+    return () => clearInterval(interval);
+  }, [isRunning, playChime]);
 
   const handleStartPause = () => {
     if (!isRunning) {
-      if (timeLeft === 0) {
-        // Reset if finished
-        handleReset();
+      if (timeLeft === 0 && currentRound >= totalRounds && !isResting) {
+        setIsResting(false);
+        setCurrentRound(1);
+        setTimeLeft(roundTimeMinutes * 60);
+        setIsRunning(true);
+        playChime('START');
+        return;
       } else {
         playChime('START');
       }
@@ -151,7 +177,7 @@ export const MatTimer: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <Flame className="w-5 h-5 text-amber-500 animate-pulse" />
+            <Flame className="w-5 h-5 text-amber-500" />
             Cronômetro de Rola do Tatame
           </h3>
           <p className="text-xs text-slate-400">
@@ -161,7 +187,12 @@ export const MatTimer: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
+            onClick={() => {
+              setSoundEnabled(!soundEnabled);
+              if (!soundEnabled) {
+                playChime('START');
+              }
+            }}
             className={`p-2 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
               soundEnabled
                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
@@ -186,13 +217,14 @@ export const MatTimer: React.FC = () => {
       {/* Main Big Display Panel */}
       <div
         ref={timerContainerRef}
-        className={`rounded-3xl border-2 p-8 transition-all flex flex-col items-center justify-between text-white shadow-2xl relative overflow-hidden ${
+        translate="no"
+        className={`rounded-3xl border-2 p-8 transition-all flex flex-col items-center justify-between text-white shadow-2xl relative overflow-hidden notranslate ${
           timeLeft === 0
             ? 'bg-gradient-to-br from-amber-950 via-slate-950 to-stone-900 border-amber-500'
             : isResting
             ? 'bg-gradient-to-br from-blue-950 via-slate-950 to-indigo-950 border-blue-500'
             : isWarningTime
-            ? 'bg-gradient-to-br from-rose-950 via-slate-950 to-amber-950 border-rose-500 animate-pulse'
+            ? 'bg-gradient-to-br from-rose-950 via-slate-950 to-amber-950 border-rose-500'
             : 'bg-gradient-to-br from-slate-900 via-slate-950 to-stone-900 border-slate-800'
         }`}
       >
@@ -205,29 +237,31 @@ export const MatTimer: React.FC = () => {
                 : isResting
                 ? 'bg-blue-500 text-slate-950'
                 : isWarningTime
-                ? 'bg-rose-600 text-white animate-bounce'
+                ? 'bg-rose-600 text-white animate-pulse'
                 : 'bg-emerald-500 text-slate-950'
             }`}
           >
-            {timeLeft === 0
-              ? 'TREINO CONCLUÍDO! OSS!'
-              : isResting
-              ? 'DESCANSO / TROCA DE DUPLA'
-              : isWarningTime
-              ? 'ÚLTIMO MINUTO DE ROLA!'
-              : 'COMBATE EM ANDAMENTO'}
+            <span>
+              {timeLeft === 0
+                ? 'TREINO CONCLUÍDO! OSS!'
+                : isResting
+                ? 'DESCANSO / TROCA DE DUPLA'
+                : isWarningTime
+                ? 'ÚLTIMO MINUTO DE ROLA!'
+                : 'COMBATE EM ANDAMENTO'}
+            </span>
           </span>
         </div>
 
         {/* Big Time Display */}
         <div className="my-8 text-center">
-          <div className="text-7xl sm:text-9xl font-black font-mono tracking-tighter text-slate-100 drop-shadow-lg">
-            {formatTime(timeLeft)}
+          <div className="text-7xl sm:text-9xl font-black font-mono tracking-tighter text-slate-100 drop-shadow-lg notranslate">
+            <span>{formatTime(timeLeft)}</span>
           </div>
 
           <div className="mt-4 flex items-center justify-center gap-4 text-slate-300">
-            <span className="text-sm sm:text-lg font-bold bg-slate-800/80 px-4 py-1.5 rounded-xl border border-slate-700">
-              ROUND {currentRound} DE {totalRounds}
+            <span className="text-sm sm:text-lg font-bold bg-slate-800/80 px-4 py-1.5 rounded-xl border border-slate-700 notranslate">
+              <span>{`ROUND ${currentRound} DE ${totalRounds}`}</span>
             </span>
           </div>
         </div>
@@ -243,9 +277,10 @@ export const MatTimer: React.FC = () => {
             }`}
           >
             {isRunning ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
-            {isRunning ? 'PAUSAR' : timeLeft === 0 ? 'REINICIAR TREINO' : 'INICIAR ROLA'}
+            <span key={isRunning ? 'run' : 'pause'}>
+              {isRunning ? 'PAUSAR' : timeLeft === 0 ? 'REINICIAR TREINO' : 'INICIAR ROLA'}
+            </span>
           </button>
-
           <button
             onClick={handleReset}
             className="p-4 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
@@ -327,3 +362,4 @@ export const MatTimer: React.FC = () => {
     </div>
   );
 };
+
