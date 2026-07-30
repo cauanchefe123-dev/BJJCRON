@@ -20,8 +20,10 @@ import {
   Clock,
   Check,
   AlertCircle,
-  Send
+  Send,
+  Building2
 } from 'lucide-react';
+import { getStoredAcademiesList } from '../academies/AcademyLinkView';
 
 interface EditStudentModalProps {
   isOpen: boolean;
@@ -36,9 +38,11 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const { updateStudent, beltRequests, requestBeltChange, approveBeltChange, rejectBeltChange } = useData();
+  const availableAcademies = getStoredAcademiesList();
 
   const [formData, setFormData] = useState<Partial<Student>>({});
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [linkedAcademyName, setLinkedAcademyName] = useState<string>(availableAcademies[0]?.name || '');
 
   // Student request belt change state
   const [reqBelt, setReqBelt] = useState<BeltType>('AZUL');
@@ -264,6 +268,54 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
               />
             </div>
+          </div>
+
+          {/* Vínculo à Academia / Equipe */}
+          <div className="space-y-2 pt-2 border-t border-slate-800">
+            <label className="text-amber-400 font-extrabold block text-xs flex items-center gap-1.5">
+              <Building2 className="w-4 h-4 text-amber-400" />
+              Vincular-se à Academia / Equipe *
+            </label>
+            <select
+              value={linkedAcademyName || availableAcademies[0]?.name}
+              onChange={e => {
+                const newName = e.target.value;
+                setLinkedAcademyName(newName);
+                if (student) {
+                  localStorage.setItem(`bjjcron_student_academy_name_${student.id}`, newName);
+                }
+              }}
+              className="w-full bg-slate-950 border border-amber-500/50 rounded-xl p-2.5 text-slate-100 font-semibold focus:ring-2 focus:ring-amber-500 outline-none text-xs"
+            >
+              {availableAcademies.map(ac => (
+                <option key={ac.id} value={ac.name}>
+                  {ac.name} — Prof. {ac.headCoachName} ({ac.city})
+                </option>
+              ))}
+            </select>
+
+            {/* Selected Academy Preview Card with Logo & Professor */}
+            {(() => {
+              const selectedAc = availableAcademies.find(
+                a => a.name === (linkedAcademyName || availableAcademies[0]?.name)
+              ) || availableAcademies[0];
+              if (!selectedAc) return null;
+              return (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/90 border border-slate-800">
+                  <img
+                    src={selectedAc.logoUrl}
+                    alt={selectedAc.name}
+                    className="w-10 h-10 rounded-lg object-cover border border-amber-400/80 shrink-0 bg-slate-900"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-100 truncate">{selectedAc.name}</p>
+                    <p className="text-[11px] text-amber-400 font-semibold truncate">
+                      Mestre / Prof: {selectedAc.headCoachName}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Belt & Categories Section */}

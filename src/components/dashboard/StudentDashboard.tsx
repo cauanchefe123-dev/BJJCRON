@@ -4,7 +4,7 @@ import { useData } from '../../context/DataContext';
 import { BeltBadge } from '../belts/BeltBadge';
 import { getStudentAvatar, resolveStudentForUser } from '../../constants/avatar';
 import { DigitalMembershipCard } from '../card/DigitalMembershipCard';
-import { Award, QrCode, CreditCard, BookOpen, Clock, Calendar, CheckCircle, AlertTriangle, ArrowRight, Flame, Sparkles, Edit3 } from 'lucide-react';
+import { Award, QrCode, CreditCard, BookOpen, Clock, Calendar, CheckCircle, AlertTriangle, ArrowRight, Flame, Sparkles, Edit3, Shield } from 'lucide-react';
 
 interface StudentDashboardProps {
   onNavigate: (tab: string) => void;
@@ -62,6 +62,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
               </button>
             )}
             <button
+              onClick={() => onNavigate('academies')}
+              className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg transition-all"
+            >
+              <Shield className="w-4 h-4 text-amber-300" />
+              Vincular à Academia
+            </button>
+            <button
               onClick={() => onNavigate('card')}
               className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-lg transition-all"
             >
@@ -83,6 +90,37 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
               Observações
             </button>
           </div>
+        </div>
+
+        {/* Linked Academy Quick Banner */}
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <img
+              src={academyConfig.logoUrl || 'https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=300'}
+              alt={academyConfig.name}
+              className="w-12 h-12 rounded-xl object-cover border border-amber-500/60 shadow-md bg-slate-900"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase text-amber-400">
+                  Sua Academia Vinculada:
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  ATLETA ATIVO
+                </span>
+              </div>
+              <h4 className="text-sm font-extrabold text-slate-100 mt-0.5">
+                {academyConfig.name} — Prof. {academyConfig.headCoachName || 'Gabriel "Fera" Santos'}
+              </h4>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('academies')}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0"
+          >
+            <Shield className="w-3.5 h-3.5 text-amber-400" />
+            Mudar / Vincular a Outra Academia →
+          </button>
         </div>
 
         {/* Belt Progress Gauge */}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { getStoredAcademiesList } from '../academies/AcademyLinkView';
 import { BeltType, AgeCategory, WeightCategory } from '../../types';
 import {
   ShieldCheck,
@@ -37,6 +38,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const [activeTab, setActiveTab] = useState<'REGISTER' | 'LOGIN' | 'FIRST_ACCESS'>('REGISTER');
   const [selectedRole, setSelectedRole] = useState<'ALUNO' | 'PROFESSOR' | 'ADMIN'>('ALUNO');
+  const availableAcademies = getStoredAcademiesList();
 
   // Form States - All clean without pre-filled test data
   const [loginEmail, setLoginEmail] = useState('');
@@ -441,6 +443,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <label className="text-amber-400 font-extrabold block text-xs flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-amber-400" />
+                    Vincular-se à Academia / Equipe *
+                  </label>
+                  <select
+                    value={studentReg.academyName || availableAcademies[0]?.name}
+                    onChange={e => setStudentReg({ ...studentReg, academyName: e.target.value })}
+                    className="w-full bg-slate-950 border border-amber-500/50 rounded-xl p-2.5 text-slate-100 font-semibold focus:ring-2 focus:ring-amber-500 outline-none text-xs"
+                  >
+                    {availableAcademies.map(ac => (
+                      <option key={ac.id} value={ac.name}>
+                        {ac.name} — Prof. {ac.headCoachName} ({ac.city})
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Selected Academy Preview Card with Logo & Professor */}
+                  {(() => {
+                    const selectedAc = availableAcademies.find(
+                      a => a.name === (studentReg.academyName || availableAcademies[0]?.name)
+                    ) || availableAcademies[0];
+                    if (!selectedAc) return null;
+                    return (
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/90 border border-slate-800">
+                        <img
+                          src={selectedAc.logoUrl}
+                          alt={selectedAc.name}
+                          className="w-10 h-10 rounded-lg object-cover border border-amber-400/80 shrink-0 bg-slate-900"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-100 truncate">{selectedAc.name}</p>
+                          <p className="text-[11px] text-amber-400 font-semibold truncate">
+                            Mestre / Prof: {selectedAc.headCoachName}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <button

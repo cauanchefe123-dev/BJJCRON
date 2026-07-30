@@ -661,6 +661,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
     }
+    window.dispatchEvent(new Event('bjjcron_users_updated'));
+    window.dispatchEvent(new Event('bjjcron_students_updated'));
   };
 
   const rejectUser = (identifier: string) => {
@@ -686,6 +688,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
     }
+    window.dispatchEvent(new Event('bjjcron_users_updated'));
+    window.dispatchEvent(new Event('bjjcron_students_updated'));
   };
 
   const switchRole = (role: UserRole) => {

@@ -17,7 +17,8 @@ import {
   Settings,
   LogOut,
   Award,
-  MessageSquareQuote
+  MessageSquareQuote,
+  Shield
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -46,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard, roles: ['ADMIN', 'PROFESSOR', 'ALUNO'] },
     { id: 'attendance', label: 'Frequência & QR Code', icon: QrCode, roles: ['ADMIN', 'PROFESSOR', 'ALUNO'] },
+    { id: 'academies', label: 'Vincular à Academia', icon: Shield, roles: ['ADMIN', 'PROFESSOR', 'ALUNO'] },
     { id: 'students', label: 'Alunos & Graduações', icon: Users, roles: ['ADMIN', 'PROFESSOR'] },
     { id: 'teachers', label: 'Professores & Staff', icon: UserCheck, roles: ['ADMIN', 'PROFESSOR'] },
     { id: 'classes', label: 'Turmas & Aulas', icon: CalendarDays, roles: ['ADMIN', 'PROFESSOR'] },

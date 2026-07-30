@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
+import { saveAcademyToList } from '../academies/AcademyLinkView';
 import { BeltType } from '../../types';
-import { Settings, Save, RefreshCw, Database, Shield, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { 
+  Settings, Save, RefreshCw, Database, Shield, CheckCircle2, AlertCircle, 
+  Upload, Image as ImageIcon, Sparkles, Users, UserCheck, UserX, Mail, 
+  Phone, Clock, BadgeAlert, Award, ChevronRight 
+} from 'lucide-react';
 
 const LOGO_PRESETS = [
   {
@@ -23,7 +29,11 @@ const LOGO_PRESETS = [
 ];
 
 export const AcademySettings: React.FC = () => {
-  const { academyConfig, updateAcademyConfig, resetToDefaultData } = useData();
+  const { academyConfig, updateAcademyConfig, resetToDefaultData, students, updateStudent } = useData();
+  const { approveUser, rejectUser } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<'info' | 'requests'>('info');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: academyConfig.name,
@@ -40,6 +50,24 @@ export const AcademySettings: React.FC = () => {
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const pendingStudents = students.filter(s => s.approvalStatus === 'PENDING');
+
+  const handleApproveStudent = (studentId: string, studentName: string) => {
+    approveUser(studentId);
+    updateStudent(studentId, { approvalStatus: 'APPROVED', active: true });
+    setToastMsg(`✅ Aluno(a) ${studentName} aceito(a) na equipe! Agora ele já pode visualizar sua evolução em tempo real.`);
+    setTimeout(() => setToastMsg(null), 6000);
+  };
+
+  const handleRejectStudent = (studentId: string, studentName: string) => {
+    if (confirm(`Deseja recusa e remover a solicitação de ${studentName}?`)) {
+      rejectUser(studentId);
+      updateStudent(studentId, { approvalStatus: 'REJECTED', active: false });
+      setToastMsg(`❌ Solicitação de ${studentName} foi recusada.`);
+      setTimeout(() => setToastMsg(null), 4000);
+    }
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,24 +99,93 @@ export const AcademySettings: React.FC = () => {
       },
     });
 
+    saveAcademyToList({
+      name: formData.name,
+      fantasyName: formData.fantasyName,
+      logoUrl: formData.logoUrl,
+      headCoachName: formData.headCoachName,
+      address: formData.address,
+    });
+
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  const getBeltColorBadge = (belt: BeltType) => {
+    switch (belt) {
+      case 'BRANCA':
+        return 'bg-slate-100 text-slate-900 border border-slate-300';
+      case 'AZUL':
+        return 'bg-blue-600 text-white';
+      case 'ROXA':
+        return 'bg-purple-600 text-white';
+      case 'MARROM':
+        return 'bg-amber-800 text-white';
+      case 'PRETA':
+        return 'bg-slate-950 text-amber-400 border border-amber-500/50';
+      default:
+        return 'bg-slate-700 text-white';
+    }
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white flex items-center justify-between shadow-xl">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
         <div>
           <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <Settings className="w-5 h-5 text-amber-400" />
-            Configurações do BJJCRON & Supabase
+            Academia, Logo & Solicitações da Equipe
           </h3>
-          <p className="text-xs text-slate-400">
-            Dados da academia, chave PIX, critérios de graduação e banco de dados.
+          <p className="text-xs text-slate-400 mt-1">
+            Configure dados da sua equipe, logomarca oficial e aprove solicitações de entrada de novos alunos.
           </p>
         </div>
+
+        {/* Tab switcher */}
+        <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('info')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'info'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            Dados & Logo
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('requests')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all relative ${
+              activeTab === 'requests'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Solicitações na Equipe
+            {pendingStudents.length > 0 && (
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === 'requests' 
+                  ? 'bg-slate-950 text-amber-400' 
+                  : 'bg-amber-500 text-slate-950 animate-pulse'
+              }`}>
+                {pendingStudents.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
+
+      {toastMsg && (
+        <div className="p-4 rounded-xl bg-amber-950/80 border border-amber-500/50 text-amber-200 text-xs font-bold flex items-center gap-2 shadow-lg animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
 
       {savedSuccess && (
         <div className="p-4 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs font-bold flex items-center gap-2">
@@ -97,234 +194,362 @@ export const AcademySettings: React.FC = () => {
         </div>
       )}
 
-      {/* Settings Form */}
-      <form onSubmit={handleSave} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white space-y-6 text-xs shadow-lg">
-        {/* Academy Logo Section */}
-        <div className="space-y-4 border-b border-slate-800 pb-6">
-          <div className="flex items-center justify-between">
-            <h4 className="font-bold text-sm text-amber-400 flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-amber-400" />
-              Logo Oficial da Academia / Equipe
-            </h4>
-            <span className="text-[10px] text-slate-400">
-              Exibido na barra lateral, carteirinhas e comprovantes
-            </span>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-6 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-            {/* Logo Preview Box */}
-            <div className="relative group shrink-0">
-              <div className="w-24 h-24 rounded-2xl bg-slate-900 border-2 border-amber-500/60 p-1 flex items-center justify-center overflow-hidden shadow-xl">
-                {formData.logoUrl ? (
-                  <img
-                    src={formData.logoUrl}
-                    alt="Logo da Academia"
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                ) : (
-                  <div className="text-center p-2">
-                    <Shield className="w-8 h-8 text-amber-400 mx-auto mb-1" />
-                    <span className="text-[9px] font-bold text-slate-400 block">Sem Logo</span>
-                  </div>
-                )}
-              </div>
-              {formData.logoUrl && (
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, logoUrl: '' })}
-                  className="absolute -top-2 -right-2 p-1 rounded-full bg-rose-600 text-white text-[10px] shadow-md hover:bg-rose-500 transition-all"
-                  title="Remover Logo"
-                >
-                  ✕
-                </button>
-              )}
+      {/* TAB 1: ACADEMY INFO & LOGO */}
+      {activeTab === 'info' && (
+        <form onSubmit={handleSave} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white space-y-6 text-xs shadow-lg">
+          {/* Academy Logo Section */}
+          <div className="space-y-4 border-b border-slate-800 pb-6">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-sm text-amber-400 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-amber-400" />
+                Logo Oficial da Academia / Equipe
+              </h4>
+              <span className="text-[10px] text-slate-400">
+                Exibido na barra lateral, carteirinhas e comprovantes
+              </span>
             </div>
 
-            {/* Upload Options */}
-            <div className="flex-1 space-y-3 w-full">
-              <div className="space-y-1">
-                <label className="text-slate-300 font-bold block">
-                  1. Enviar arquivo do computador ou celular:
-                </label>
-                <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition-all">
-                  <Upload className="w-4 h-4" />
-                  Upload da Logomarca (PNG / JPG / WebP)
+            <div className="flex flex-col sm:flex-row items-center gap-6 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+              {/* Logo Preview Box */}
+              <div className="relative group shrink-0">
+                <div className="w-24 h-24 rounded-2xl bg-slate-900 border-2 border-amber-500/60 p-1 flex items-center justify-center overflow-hidden shadow-xl">
+                  {formData.logoUrl ? (
+                    <img
+                      src={formData.logoUrl}
+                      alt="Logo da Academia"
+                      className="w-full h-full object-cover rounded-xl"
+                    />
+                  ) : (
+                    <div className="text-center p-2">
+                      <Shield className="w-8 h-8 text-amber-400 mx-auto mb-1" />
+                      <span className="text-[9px] font-bold text-slate-400 block">Sem Logo</span>
+                    </div>
+                  )}
+                </div>
+                {formData.logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, logoUrl: '' })}
+                    className="absolute -top-2 -right-2 p-1 rounded-full bg-rose-600 text-white text-[10px] shadow-md hover:bg-rose-500 transition-all"
+                    title="Remover Logo"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Upload Options */}
+              <div className="flex-1 space-y-3 w-full">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-bold block">
+                    1. Enviar arquivo do computador ou celular:
+                  </label>
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition-all">
+                    <Upload className="w-4 h-4" />
+                    Upload da Logomarca (PNG / JPG / WebP)
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-bold block">
+                    2. Ou insira a URL da Imagem da Logo:
+                  </label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
+                    type="url"
+                    placeholder="https://sua-academia.com/logo.png"
+                    value={formData.logoUrl}
+                    onChange={e => setFormData({ ...formData, logoUrl: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
                   />
-                </label>
-              </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-300 font-bold block">
-                  2. Ou insira a URL da Imagem da Logo:
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://sua-academia.com/logo.png"
-                  value={formData.logoUrl}
-                  onChange={e => setFormData({ ...formData, logoUrl: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
-                />
-              </div>
-
-              {/* Logo Presets */}
-              <div className="space-y-1">
-                <label className="text-slate-400 text-[11px] font-semibold block flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-400" />
-                  Modelos de Escudos Pré-definidos:
-                </label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {LOGO_PRESETS.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, logoUrl: preset.url })}
-                      className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-lg text-[10px] text-slate-300 transition-all"
-                    >
-                      <img src={preset.url} alt="" className="w-3.5 h-3.5 rounded object-cover" />
-                      <span>{preset.name}</span>
-                    </button>
-                  ))}
+                {/* Logo Presets */}
+                <div className="space-y-1">
+                  <label className="text-slate-400 text-[11px] font-semibold block flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    Modelos de Escudos Pré-definidos:
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {LOGO_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, logoUrl: preset.url })}
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-lg text-[10px] text-slate-300 transition-all"
+                      >
+                        <img src={preset.url} alt="" className="w-3.5 h-3.5 rounded object-cover" />
+                        <span>{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Academy Info */}
-        <div className="space-y-4">
-          <h4 className="font-bold text-sm text-amber-400 border-b border-slate-800 pb-2">
-            Dados Gerais da Academia
-          </h4>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-slate-300 font-bold block mb-1">Razão Social / Nome Oficial</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-300 font-bold block mb-1">Nome Fantasia do Tatame</label>
-              <input
-                type="text"
-                value={formData.fantasyName}
-                onChange={e => setFormData({ ...formData, fantasyName: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-300 font-bold block mb-1">Mestre / Head Coach Responsável</label>
-              <input
-                type="text"
-                value={formData.headCoachName}
-                onChange={e => setFormData({ ...formData, headCoachName: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-300 font-bold block mb-1">Chave PIX Oficial para Mensalidades</label>
-              <input
-                type="text"
-                value={formData.pixKey}
-                onChange={e => setFormData({ ...formData, pixKey: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-300 font-bold block mb-1">Telefone / WhatsApp Contato</label>
-              <input
-                type="text"
-                value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-300 font-bold block mb-1">Endereço da Academia</label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Supabase Integration Box */}
-        <div className="space-y-4 pt-4 border-t border-slate-800">
-          <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-emerald-400" />
-            <h4 className="font-bold text-sm text-emerald-400">
-              Conexão Supabase DB (Opcional)
+          {/* Academy Info */}
+          <div className="space-y-4">
+            <h4 className="font-bold text-sm text-amber-400 border-b border-slate-800 pb-2">
+              Dados Gerais da Academia
             </h4>
-          </div>
-          <p className="text-slate-400 text-[11px]">
-            O BJJCRON utiliza armazenamento persistente local (`localStorage`). Se desejar conectar a um projeto Supabase real, insira suas credenciais abaixo:
-          </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-slate-300 font-bold block mb-1">Supabase Project URL</label>
-              <input
-                type="text"
-                placeholder="https://xyzcompany.supabase.co"
-                value={formData.supabaseUrl}
-                onChange={e => setFormData({ ...formData, supabaseUrl: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Razão Social / Nome Oficial</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Nome Fantasia do Tatame</label>
+                <input
+                  type="text"
+                  value={formData.fantasyName}
+                  onChange={e => setFormData({ ...formData, fantasyName: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Mestre / Head Coach Responsável</label>
+                <input
+                  type="text"
+                  value={formData.headCoachName}
+                  onChange={e => setFormData({ ...formData, headCoachName: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Chave PIX Oficial para Mensalidades</label>
+                <input
+                  type="text"
+                  value={formData.pixKey}
+                  onChange={e => setFormData({ ...formData, pixKey: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Telefone / WhatsApp Contato</label>
+                <input
+                  type="text"
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Endereço da Academia</label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
             </div>
+          </div>
 
-            <div>
-              <label className="text-slate-300 font-bold block mb-1">Supabase Anon Key</label>
-              <input
-                type="password"
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                value={formData.supabaseAnonKey}
-                onChange={e => setFormData({ ...formData, supabaseAnonKey: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
-              />
+          {/* Supabase Integration Box */}
+          <div className="space-y-4 pt-4 border-t border-slate-800">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-emerald-400" />
+              <h4 className="font-bold text-sm text-emerald-400">
+                Conexão Supabase DB (Opcional)
+              </h4>
+            </div>
+            <p className="text-slate-400 text-[11px]">
+              O BJJCRON utiliza armazenamento persistente local (`localStorage`). Se desejar conectar a um projeto Supabase real, insira suas credenciais abaixo:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Supabase Project URL</label>
+                <input
+                  type="text"
+                  placeholder="https://xyzcompany.supabase.co"
+                  value={formData.supabaseUrl}
+                  onChange={e => setFormData({ ...formData, supabaseUrl: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Supabase Anon Key</label>
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                  value={formData.supabaseAnonKey}
+                  onChange={e => setFormData({ ...formData, supabaseAnonKey: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm('Deseja restaurar todos os dados iniciais do sistema BJJCRON?')) {
-                resetToDefaultData();
-                alert('Dados restaurados com sucesso!');
-              }
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-xs font-bold"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Restaurar Dados Padrão de Teste
-          </button>
+          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('Deseja restaurar todos os dados iniciais do sistema BJJCRON?')) {
+                  resetToDefaultData();
+                  alert('Dados restaurados com sucesso!');
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-xs font-bold"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Restaurar Dados Padrão de Teste
+            </button>
 
-          <button
-            type="submit"
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md"
-          >
-            <Save className="w-4 h-4" />
-            Salvar Configurações
-          </button>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md"
+            >
+              <Save className="w-4 h-4" />
+              Salvar Configurações
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* TAB 2: STUDENT REQUESTS & REAL-TIME EVOLUTION LINK */}
+      {activeTab === 'requests' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 flex items-start gap-3">
+            <BadgeAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <h4 className="font-bold text-amber-300 text-sm mb-1">
+                Solicitações Pendentes para Entrar na Equipe ({pendingStudents.length})
+              </h4>
+              <p className="text-slate-300 leading-relaxed">
+                Ao clicar em <strong className="text-emerald-400">"Aceitar na Equipe"</strong>, o aluno é automaticamente aprovado no sistema e o vínculo com a sua academia é ativado no mesmo instante. A partir desse momento, ele já poderá fazer login e visualizar sua <strong className="text-amber-400">evolução em tempo real</strong> (presenças, graduação, faixa e cronograma de treinos) no portal do aluno.
+              </p>
+            </div>
+          </div>
+
+          {pendingStudents.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center space-y-3">
+              <div className="w-16 h-16 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center mx-auto text-slate-500">
+                <Users className="w-8 h-8" />
+              </div>
+              <h4 className="text-base font-bold text-slate-200">
+                Nenhuma solicitação pendente
+              </h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                No momento, todos os alunos pré-cadastrados ou que solicitaram entrada na equipe já foram aprovados e estão ativados no sistema.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('info')}
+                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
+              >
+                Voltar aos Dados da Academia
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {pendingStudents.map(student => (
+                <div
+                  key={student.id}
+                  className="bg-slate-900 border border-amber-500/40 rounded-2xl p-5 hover:border-amber-500/70 transition-all shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                >
+                  {/* Left info */}
+                  <div className="flex items-start gap-4 flex-1">
+                    <img
+                      src={student.photoUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
+                      alt={student.name}
+                      className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400/80 shrink-0"
+                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h5 className="font-extrabold text-slate-100 text-base">
+                          {student.name}
+                        </h5>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                          {student.registrationNumber}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          SOLICITAÇÃO PENDENTE
+                        </span>
+                      </div>
+
+                      {/* Belt & Category */}
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className={`px-2 py-0.5 rounded font-extrabold text-[11px] ${getBeltColorBadge(student.belt)}`}>
+                          Faixa {student.belt} ({student.stripes} {student.stripes === 1 ? 'Grau' : 'Graus'})
+                        </span>
+                        <span className="text-slate-400 text-xs">
+                          • {student.ageCategory} - Peso {student.weightCategory}
+                        </span>
+                      </div>
+
+                      {/* Contact & Date */}
+                      <div className="flex items-center gap-4 text-xs text-slate-400 pt-1 flex-wrap">
+                        {student.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3.5 h-3.5 text-amber-400" />
+                            {student.email}
+                          </span>
+                        )}
+                        {student.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3.5 h-3.5 text-amber-400" />
+                            {student.phone}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1 text-slate-500">
+                          <Clock className="w-3.5 h-3.5" />
+                          Data: {new Date(student.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+
+                      {student.notes && (
+                        <p className="text-xs text-amber-200/90 bg-amber-950/40 px-3 py-1.5 rounded-lg border border-amber-500/20 mt-2">
+                          💬 <strong>Obs:</strong> {student.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions right */}
+                  <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-800 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleRejectStudent(student.id, student.name)}
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 font-bold text-xs transition-all"
+                    >
+                      <UserX className="w-4 h-4" />
+                      Recusar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApproveStudent(student.id, student.name)}
+                      className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02]"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      Aceitar na Equipe
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </form>
+      )}
     </div>
   );
 };
+

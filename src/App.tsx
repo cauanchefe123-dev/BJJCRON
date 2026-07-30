@@ -35,6 +35,7 @@ import { StudentTrainingJournal } from './components/student/StudentTrainingJour
 import { TeacherObservationsView } from './components/observations/TeacherObservationsView';
 import { ReportsView } from './components/reports/ReportsView';
 import { AcademySettings } from './components/settings/AcademySettings';
+import { AcademyLinkView } from './components/academies/AcademyLinkView';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 
 import { PaymentRecord, Student } from './types';
@@ -142,6 +143,10 @@ function MainApp() {
                 <AttendanceManager
                   onOpenCheckin={() => setIsQuickCheckinOpen(true)}
                 />
+              )}
+
+              {activeTab === 'academies' && (
+                <AcademyLinkView onNavigateHome={() => setActiveTab('dashboard')} />
               )}
 
               {activeTab === 'teachers' && <TeacherManager />}
