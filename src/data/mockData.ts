@@ -1,0 +1,670 @@
+import { AcademyConfig, BJJClass, Graduation, PaymentRecord, Student, Teacher, TeacherObservation, TrainingLog, User, AttendanceRecord } from '../types';
+import { DEFAULT_BLACK_GI_AVATAR } from '../constants/avatar';
+
+export const INITIAL_TEACHERS: Teacher[] = [
+  {
+    id: 'prof-1',
+    name: 'Prof. Gabriel "Fera" Santos',
+    email: 'professor@bjjcron.com',
+    phone: '(11) 98765-4321',
+    belt: 'PRETA',
+    degrees: 3,
+    specialty: 'Jiu-Jitsu Fundamental, Avançado & Competição',
+    cref: '012345-G/SP',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    bio: 'Faixa preta 3º Grau, 15 anos de experiência no tatame, Campeão Brasileiro IBJJF.',
+    active: true,
+    startDate: '2015-03-01'
+  },
+  {
+    id: 'prof-2',
+    name: 'Profª. Beatriz Santos',
+    email: 'beatriz.marrom@email.com',
+    phone: '(11) 97777-6655',
+    belt: 'MARROM',
+    degrees: 2,
+    specialty: 'Jiu-Jitsu Kids & Defesa Pessoal Feminina',
+    cref: '098765-G/SP',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    bio: 'Especialista em pedagogia infantil aplicada às artes marciais e guarda aberta.',
+    active: true,
+    startDate: '2020-01-20'
+  },
+  {
+    id: 'prof-3',
+    name: 'Mestre Carlos Gracie Jr.',
+    email: 'admin@bjjcron.com',
+    phone: '(11) 99887-1122',
+    belt: 'PRETA',
+    degrees: 6,
+    specialty: 'Open Mat, Treinos de Graduação & Gestão Técnica',
+    cref: '001122-G/SP',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    bio: 'Líder técnico fundador da equipe e orientador dos exames de faixa.',
+    active: true,
+    startDate: '2010-01-01'
+  }
+];
+
+export const INITIAL_USERS: User[] = [
+  {
+    id: 'user-admin',
+    name: 'Mestre Carlos Gracie Jr.',
+    email: 'admin@bjjcron.com',
+    role: 'ADMIN',
+    avatarUrl: DEFAULT_BLACK_GI_AVATAR,
+    phone: '(11) 99887-1122',
+    password: '123',
+    approvalStatus: 'APPROVED',
+    isActivated: true
+  },
+  {
+    id: 'user-prof-1',
+    name: 'Prof. Gabriel "Fera" Santos',
+    email: 'professor@bjjcron.com',
+    role: 'PROFESSOR',
+    avatarUrl: DEFAULT_BLACK_GI_AVATAR,
+    phone: '(11) 98765-4321',
+    password: '123',
+    approvalStatus: 'APPROVED',
+    isActivated: true
+  },
+  {
+    id: 'user-student-1',
+    name: 'Lucas Silva',
+    email: 'aluno@bjjcron.com',
+    role: 'ALUNO',
+    studentId: 'std-1',
+    avatarUrl: DEFAULT_BLACK_GI_AVATAR,
+    phone: '(11) 97654-3210',
+    password: '123',
+    approvalStatus: 'APPROVED',
+    isActivated: true
+  },
+  {
+    id: 'user-student-2',
+    name: 'Ana Paula Oliveira',
+    email: 'ana.roxa@bjjcron.com',
+    role: 'ALUNO',
+    studentId: 'std-2',
+    avatarUrl: DEFAULT_BLACK_GI_AVATAR,
+    phone: '(11) 91234-5678',
+    password: '123',
+    approvalStatus: 'APPROVED',
+    isActivated: true
+  },
+  {
+    id: 'user-student-pending-1',
+    name: 'Bruno Costa',
+    email: 'bruno.solicitacao@email.com',
+    role: 'ALUNO',
+    studentId: 'std-pending-1',
+    avatarUrl: DEFAULT_BLACK_GI_AVATAR,
+    phone: '(11) 98888-1111',
+    password: '123',
+    approvalStatus: 'PENDING',
+    isActivated: true
+  },
+  {
+    id: 'user-student-precadastrado',
+    name: 'Matheus Pre-Cadastrado',
+    email: 'matheus.equipe@bjjcron.com',
+    role: 'ALUNO',
+    studentId: 'std-precad-1',
+    avatarUrl: DEFAULT_BLACK_GI_AVATAR,
+    phone: '(11) 97777-2222',
+    approvalStatus: 'APPROVED',
+    isActivated: false
+  }
+];
+
+export const INITIAL_ACADEMY_CONFIG: AcademyConfig = {
+  name: 'BJJCRON ACADEMY',
+  fantasyName: 'BJJCRON Jiu-Jitsu Headquarter',
+  cnpj: '12.345.678/0001-90',
+  headCoachName: 'Mestre Gabriel "Fera" Santos',
+  headCoachBelt: 'PRETA',
+  phone: '(11) 3210-9988',
+  email: 'contato@bjjcron.com.br',
+  address: 'Av. Paulista, 1500 - 3º Andar, São Paulo - SP',
+  logoUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&q=80&w=200',
+  pixKey: '12345678000190',
+  graduationCriteria: {
+    BRANCA: { classesPerStripe: 30, monthsForNextBelt: 12 },
+    CINZA: { classesPerStripe: 15, monthsForNextBelt: 6 },
+    AMARELA: { classesPerStripe: 15, monthsForNextBelt: 6 },
+    LARANJA: { classesPerStripe: 20, monthsForNextBelt: 8 },
+    VERDE: { classesPerStripe: 20, monthsForNextBelt: 8 },
+    AZUL: { classesPerStripe: 40, monthsForNextBelt: 18 },
+    ROXA: { classesPerStripe: 50, monthsForNextBelt: 18 },
+    MARROM: { classesPerStripe: 60, monthsForNextBelt: 12 },
+    PRETA: { classesPerStripe: 100, monthsForNextBelt: 36 }
+  },
+  supabaseConfig: {
+    url: '',
+    anonKey: '',
+    connected: false
+  }
+};
+
+export const INITIAL_CLASSES: BJJClass[] = [
+  {
+    id: 'cls-1',
+    title: 'Jiu-Jitsu Fundamental (Gi)',
+    professorId: 'user-prof-1',
+    professorName: 'Prof. Gabriel "Fera"',
+    daysOfWeek: [1, 3, 5], // Seg, Qua, Sex
+    time: '07:00',
+    durationMinutes: 75,
+    category: 'FUNDAMENTAL',
+    maxCapacity: 30,
+    active: true,
+    description: 'Posturas, defesas pessoais, raspagens básicas, passagens e controle de posição.'
+  },
+  {
+    id: 'cls-2',
+    title: 'Jiu-Jitsu Avançado & Competição',
+    professorId: 'user-prof-1',
+    professorName: 'Prof. Gabriel "Fera"',
+    daysOfWeek: [1, 2, 3, 4, 5], // Seg a Sex
+    time: '12:00',
+    durationMinutes: 90,
+    category: 'AVANÇADO',
+    maxCapacity: 25,
+    active: true,
+    description: 'Estratégias de luta, guarda moderna, leglocks, drill de alta intensidade e rola específico.'
+  },
+  {
+    id: 'cls-3',
+    title: 'No-Gi / Submission Grappling',
+    professorId: 'user-prof-1',
+    professorName: 'Prof. Gabriel "Fera"',
+    daysOfWeek: [2, 4], // Ter, Qui
+    time: '19:30',
+    durationMinutes: 90,
+    category: 'NO_GI',
+    maxCapacity: 35,
+    active: true,
+    description: 'Luta sem kimono. Foco em guilhotinas, leglocks, derrubadas e controle sem esgrima.'
+  },
+  {
+    id: 'cls-4',
+    title: 'Open Mat / Treino Livre',
+    professorId: 'user-prof-1',
+    professorName: 'Mestre Carlos Gracie',
+    daysOfWeek: [6], // Sábado
+    time: '10:00',
+    durationMinutes: 120,
+    category: 'OPEN_MAT',
+    maxCapacity: 50,
+    active: true,
+    description: 'Treino aberto para todas as faixas e academias parceiras. Rola livre e estudos.'
+  },
+  {
+    id: 'cls-5',
+    title: 'Jiu-Jitsu Kids (6 a 12 anos)',
+    professorId: 'user-prof-1',
+    professorName: 'Profª. Beatriz Santos',
+    daysOfWeek: [2, 4], // Ter, Qui
+    time: '17:00',
+    durationMinutes: 60,
+    category: 'KIDS',
+    maxCapacity: 20,
+    active: true,
+    description: 'Desenvolvimento motor, disciplina, respeito e jogos educativos de Jiu-Jitsu.'
+  }
+];
+
+export const INITIAL_STUDENTS: Student[] = [
+  {
+    id: 'std-1',
+    registrationNumber: 'BJJ-2025-014',
+    name: 'Lucas Silva',
+    email: 'aluno@bjjcron.com',
+    phone: '(11) 97654-3210',
+    birthDate: '1996-05-12',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'AZUL',
+    stripes: 2,
+    startDate: '2024-02-15',
+    totalClassesAttended: 124,
+    classesSinceLastGraduation: 34,
+    weightCategory: 'MÉDIO',
+    ageCategory: 'ADULTO',
+    active: true,
+    planName: 'Plano Anual Competidor',
+    planPrice: 220,
+    paymentDueDateDay: 10,
+    paymentStatus: 'PAGO',
+    lastPaymentDate: '2026-07-05',
+    qrCodeToken: 'BJJCRON-STD-1-LUCAS-SILVA',
+    notes: 'Competidor assíduo. Campeão Paulista de Jiu-Jitsu 2025.',
+    approvalStatus: 'APPROVED',
+    hasActivatedAccount: true
+  },
+  {
+    id: 'std-2',
+    registrationNumber: 'BJJ-2024-008',
+    name: 'Ana Paula Oliveira',
+    email: 'ana.roxa@bjjcron.com',
+    phone: '(11) 91234-5678',
+    birthDate: '1998-09-22',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'ROXA',
+    stripes: 3,
+    startDate: '2022-08-10',
+    totalClassesAttended: 310,
+    classesSinceLastGraduation: 48,
+    weightCategory: 'PENA',
+    ageCategory: 'ADULTO',
+    active: true,
+    planName: 'Plano Semestral VIP',
+    planPrice: 240,
+    paymentDueDateDay: 5,
+    paymentStatus: 'PAGO',
+    lastPaymentDate: '2026-07-02',
+    qrCodeToken: 'BJJCRON-STD-2-ANA-PAULA',
+    notes: 'Atleta de guarda aberta e berimbolo.',
+    approvalStatus: 'APPROVED',
+    hasActivatedAccount: true
+  },
+  {
+    id: 'std-pending-1',
+    registrationNumber: 'BJJ-2026-PEND-01',
+    name: 'Bruno Costa',
+    email: 'bruno.solicitacao@email.com',
+    phone: '(11) 98888-1111',
+    birthDate: '1999-03-15',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'BRANCA',
+    stripes: 0,
+    startDate: new Date().toISOString().split('T')[0],
+    totalClassesAttended: 0,
+    classesSinceLastGraduation: 0,
+    weightCategory: 'LEVE',
+    ageCategory: 'ADULTO',
+    active: false,
+    planName: 'Plano Mensal Padrão',
+    planPrice: 240,
+    paymentDueDateDay: 10,
+    paymentStatus: 'PENDENTE',
+    qrCodeToken: 'BJJCRON-STD-BRUNO-COSTA',
+    notes: 'Solicitação de matrícula enviada pelo formulário web.',
+    approvalStatus: 'PENDING',
+    hasActivatedAccount: true,
+    password: '123'
+  },
+  {
+    id: 'std-precad-1',
+    registrationNumber: 'BJJ-2026-PRE-02',
+    name: 'Matheus Pre-Cadastrado',
+    email: 'matheus.equipe@bjjcron.com',
+    phone: '(11) 97777-2222',
+    birthDate: '2001-11-05',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'BRANCA',
+    stripes: 1,
+    startDate: '2026-06-01',
+    totalClassesAttended: 8,
+    classesSinceLastGraduation: 8,
+    weightCategory: 'PESADO',
+    ageCategory: 'ADULTO',
+    active: true,
+    planName: 'Plano Trimestral',
+    planPrice: 230,
+    paymentDueDateDay: 15,
+    paymentStatus: 'PENDENTE',
+    qrCodeToken: 'BJJCRON-STD-MATHEUS',
+    notes: 'Aluno cadastrado pelo Mestre em sala. Aguardando primeiro acesso do aluno com senha.',
+    approvalStatus: 'APPROVED',
+    hasActivatedAccount: false
+  },
+  {
+    id: 'std-3',
+    registrationNumber: 'BJJ-2026-003',
+    name: 'Rodrigo Mendes',
+    email: 'rodrigo.mendes@email.com',
+    phone: '(11) 98888-7766',
+    birthDate: '2001-11-03',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'BRANCA',
+    stripes: 3,
+    startDate: '2025-09-01',
+    totalClassesAttended: 88,
+    classesSinceLastGraduation: 28,
+    weightCategory: 'PESADO',
+    ageCategory: 'ADULTO',
+    active: true,
+    planName: 'Plano Mensal Livre',
+    planPrice: 260,
+    paymentDueDateDay: 15,
+    paymentStatus: 'PENDENTE',
+    lastPaymentDate: '2026-06-15',
+    qrCodeToken: 'BJJCRON-STD-3-RODRIGO-MENDES',
+    notes: 'Evolução muito rápida na guarda fechada.'
+  },
+  {
+    id: 'std-4',
+    registrationNumber: 'BJJ-2023-002',
+    name: 'Beatriz Santos',
+    email: 'beatriz.marrom@email.com',
+    phone: '(11) 97777-6655',
+    birthDate: '1992-03-30',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'MARROM',
+    stripes: 2,
+    startDate: '2020-01-20',
+    totalClassesAttended: 580,
+    classesSinceLastGraduation: 55,
+    weightCategory: 'LEVE',
+    ageCategory: 'MASTER_1',
+    active: true,
+    planName: 'Plano Anual Competidor',
+    planPrice: 200,
+    paymentDueDateDay: 10,
+    paymentStatus: 'PAGO',
+    lastPaymentDate: '2026-07-08',
+    qrCodeToken: 'BJJCRON-STD-4-BEATRIZ-SANTOS',
+    notes: 'Auxilia nas aulas Kids e treinos femininos.'
+  },
+  {
+    id: 'std-5',
+    registrationNumber: 'BJJ-2026-010',
+    name: 'Enzo Gabriel Costa',
+    email: 'pai.enzo@email.com',
+    phone: '(11) 96666-5544',
+    birthDate: '2016-07-18',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'AMARELA',
+    stripes: 1,
+    startDate: '2024-05-10',
+    totalClassesAttended: 64,
+    classesSinceLastGraduation: 14,
+    weightCategory: 'PLUMA',
+    ageCategory: 'KIDS',
+    active: true,
+    planName: 'Plano Kids Semestral',
+    planPrice: 190,
+    paymentDueDateDay: 20,
+    paymentStatus: 'PAGO',
+    lastPaymentDate: '2026-07-18',
+    qrCodeToken: 'BJJCRON-STD-5-ENZO-COSTA'
+  },
+  {
+    id: 'std-6',
+    registrationNumber: 'BJJ-2026-019',
+    name: 'Felipe Camargo',
+    email: 'felipe.camargo@email.com',
+    phone: '(11) 95555-4433',
+    birthDate: '1988-12-05',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'AZUL',
+    stripes: 0,
+    startDate: '2025-01-10',
+    totalClassesAttended: 42,
+    classesSinceLastGraduation: 2,
+    weightCategory: 'MEIO-PESADO',
+    ageCategory: 'MASTER_2',
+    active: true,
+    planName: 'Plano Mensal Livre',
+    planPrice: 260,
+    paymentDueDateDay: 5,
+    paymentStatus: 'ATRASADO',
+    lastPaymentDate: '2026-05-05',
+    qrCodeToken: 'BJJCRON-STD-6-FELIPE-CAMARGO',
+    notes: 'Mensalidade pendente há 20 dias. Entrar em contato via WhatsApp.'
+  },
+  {
+    id: 'std-7',
+    registrationNumber: 'BJJ-2022-001',
+    name: 'Professor Gabriel "Fera" Santos',
+    email: 'professor@bjjcron.com',
+    phone: '(11) 98765-4321',
+    birthDate: '1989-04-14',
+    photoUrl: DEFAULT_BLACK_GI_AVATAR,
+    belt: 'PRETA',
+    stripes: 2,
+    startDate: '2015-03-01',
+    totalClassesAttended: 1450,
+    classesSinceLastGraduation: 120,
+    weightCategory: 'MÉDIO',
+    ageCategory: 'MASTER_1',
+    active: true,
+    planName: 'Isento - Staff',
+    planPrice: 0,
+    paymentDueDateDay: 1,
+    paymentStatus: 'PAGO',
+    lastPaymentDate: '2026-07-01',
+    qrCodeToken: 'BJJCRON-STD-7-GABRIEL-FERA'
+  }
+];
+
+export const INITIAL_PAYMENTS: PaymentRecord[] = [
+  {
+    id: 'pay-1',
+    studentId: 'std-1',
+    studentName: 'Lucas Silva',
+    amount: 220,
+    dueDate: '2026-07-10',
+    paymentDate: '2026-07-05',
+    status: 'PAGO',
+    paymentMethod: 'PIX',
+    referenceMonth: '07/2026',
+    pixCode: '00020126580014BR.GOV.BCB.PIX0114123456780001905204000053039865405220.005802BR5915BJJCRON ACADEMY6009SAO PAULO62070503***6304E2D1'
+  },
+  {
+    id: 'pay-2',
+    studentId: 'std-2',
+    studentName: 'Ana Paula Oliveira',
+    amount: 240,
+    dueDate: '2026-07-05',
+    paymentDate: '2026-07-02',
+    status: 'PAGO',
+    paymentMethod: 'CARTAO',
+    referenceMonth: '07/2026'
+  },
+  {
+    id: 'pay-3',
+    studentId: 'std-3',
+    studentName: 'Rodrigo Mendes',
+    amount: 260,
+    dueDate: '2026-07-15',
+    status: 'PENDENTE',
+    referenceMonth: '07/2026',
+    pixCode: '00020126580014BR.GOV.BCB.PIX0114123456780001905204000053039865405260.005802BR5915BJJCRON ACADEMY6009SAO PAULO62070503***630491A2'
+  },
+  {
+    id: 'pay-4',
+    studentId: 'std-4',
+    studentName: 'Beatriz Santos',
+    amount: 200,
+    dueDate: '2026-07-10',
+    paymentDate: '2026-07-08',
+    status: 'PAGO',
+    paymentMethod: 'PIX',
+    referenceMonth: '07/2026'
+  },
+  {
+    id: 'pay-5',
+    studentId: 'std-5',
+    studentName: 'Enzo Gabriel Costa',
+    amount: 190,
+    dueDate: '2026-07-20',
+    paymentDate: '2026-07-18',
+    status: 'PAGO',
+    paymentMethod: 'PIX',
+    referenceMonth: '07/2026'
+  },
+  {
+    id: 'pay-6',
+    studentId: 'std-6',
+    studentName: 'Felipe Camargo',
+    amount: 260,
+    dueDate: '2026-07-05',
+    status: 'ATRASADO',
+    referenceMonth: '07/2026'
+  }
+];
+
+export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
+  {
+    id: 'att-101',
+    studentId: 'std-1',
+    studentName: 'Lucas Silva',
+    classId: 'cls-2',
+    className: 'Jiu-Jitsu Avançado & Competição',
+    date: '2026-07-28',
+    timestamp: '2026-07-28T12:05:00Z',
+    method: 'QR_CODE_STUDENT',
+    verifiedBy: 'Sistema'
+  },
+  {
+    id: 'att-102',
+    studentId: 'std-2',
+    studentName: 'Ana Paula Oliveira',
+    classId: 'cls-2',
+    className: 'Jiu-Jitsu Avançado & Competição',
+    date: '2026-07-28',
+    timestamp: '2026-07-28T12:10:00Z',
+    method: 'QR_CODE_STUDENT',
+    verifiedBy: 'Sistema'
+  },
+  {
+    id: 'att-103',
+    studentId: 'std-3',
+    studentName: 'Rodrigo Mendes',
+    classId: 'cls-1',
+    className: 'Jiu-Jitsu Fundamental (Gi)',
+    date: '2026-07-27',
+    timestamp: '2026-07-27T07:02:00Z',
+    method: 'MANUAL',
+    verifiedBy: 'Prof. Gabriel "Fera"'
+  },
+  {
+    id: 'att-104',
+    studentId: 'std-4',
+    studentName: 'Beatriz Santos',
+    classId: 'cls-2',
+    className: 'Jiu-Jitsu Avançado & Competição',
+    date: '2026-07-27',
+    timestamp: '2026-07-27T12:00:00Z',
+    method: 'MANUAL',
+    verifiedBy: 'Prof. Gabriel "Fera"'
+  },
+  {
+    id: 'att-105',
+    studentId: 'std-1',
+    studentName: 'Lucas Silva',
+    classId: 'cls-3',
+    className: 'No-Gi / Submission Grappling',
+    date: '2026-07-26',
+    timestamp: '2026-07-26T19:35:00Z',
+    method: 'QR_CODE_STUDENT'
+  },
+  {
+    id: 'att-106',
+    studentId: 'std-2',
+    studentName: 'Ana Paula Oliveira',
+    classId: 'cls-3',
+    className: 'No-Gi / Submission Grappling',
+    date: '2026-07-26',
+    timestamp: '2026-07-26T19:30:00Z',
+    method: 'QR_CODE_STUDENT'
+  }
+];
+
+export const INITIAL_GRADUATIONS: Graduation[] = [
+  {
+    id: 'grad-1',
+    studentId: 'std-1',
+    belt: 'AZUL',
+    stripes: 2,
+    promotedBy: 'Prof. Gabriel "Fera" Santos',
+    promotedAt: '2026-04-15',
+    notes: 'Outorgado 2º grau por mérito técnico e vice-campeonato regional.',
+    classesCountAtPromotion: 90
+  },
+  {
+    id: 'grad-2',
+    studentId: 'std-1',
+    belt: 'AZUL',
+    stripes: 1,
+    promotedBy: 'Prof. Gabriel "Fera" Santos',
+    promotedAt: '2025-10-10',
+    notes: 'Primeiro grau na faixa azul.',
+    classesCountAtPromotion: 50
+  },
+  {
+    id: 'grad-3',
+    studentId: 'std-2',
+    belt: 'ROXA',
+    stripes: 3,
+    promotedBy: 'Mestre Carlos Gracie',
+    promotedAt: '2026-02-20',
+    notes: 'Excelente desempenho técnico no exame de graduação.',
+    classesCountAtPromotion: 260
+  }
+];
+
+export const INITIAL_TRAINING_LOGS: TrainingLog[] = [
+  {
+    id: 'log-1',
+    studentId: 'std-1',
+    date: '2026-07-28',
+    durationMinutes: 90,
+    techniquesLearned: ['Raspagem da Guarda Aranha', 'Passagem de Guarda Emborcando', 'Triângulo Ajustado'],
+    roundsCount: 6,
+    notes: 'Treino muito puxado. Consegui ajustar bem o quadril na raspagem de aranha.',
+    moodRating: 5
+  },
+  {
+    id: 'log-2',
+    studentId: 'std-1',
+    date: '2026-07-26',
+    durationMinutes: 90,
+    techniquesLearned: ['Entrada de Leg Lock No-Gi', 'Defesa de Guillotine'],
+    roundsCount: 5,
+    notes: 'Treino de No-Gi pegado. Foco no posicionamento de calcanhar.',
+    moodRating: 4
+  }
+];
+
+export const INITIAL_BELT_REQUESTS = [
+  {
+    id: 'req-1',
+    studentId: 'std-1',
+    studentName: 'Lucas Oliveira',
+    currentBelt: 'AZUL' as const,
+    currentStripes: 3,
+    requestedBelt: 'ROXA' as const,
+    requestedStripes: 0,
+    requestDate: '2026-07-28',
+    notes: 'Atingi a quantidade necessária de aulas e cumpri o tempo mínimo de permanência na faixa azul.',
+    status: 'PENDING' as const,
+  }
+];
+
+export const INITIAL_TEACHER_OBSERVATIONS: TeacherObservation[] = [
+  {
+    id: 'obs-1',
+    studentId: 'std-1',
+    studentName: 'Lucas Silva',
+    teacherId: 'tch-1',
+    teacherName: 'Prof. Gabriel "Fera" Santos',
+    date: '2026-07-27',
+    title: 'Ajuste na Postura da Guarda Fechada',
+    content: 'Excelente aproveitamento nos treinos desta semana! Atenção apenas na postura dentro da guarda fechada para não ceder a gola com facilidade no início do rola.',
+    category: 'TÉCNICA'
+  },
+  {
+    id: 'obs-2',
+    studentId: 'std-1',
+    studentName: 'Lucas Silva',
+    teacherId: 'tch-1',
+    teacherName: 'Prof. Gabriel "Fera" Santos',
+    date: '2026-07-20',
+    title: 'Evolução no Gas e Ritmo de Luta',
+    content: 'Ótima constância na frequência de treinos. Seu ritmo no treino de competição subiu bastante. Mantenha essa pegada rumo ao próximo grau!',
+    category: 'EVOLUÇÃO'
+  }
+];
