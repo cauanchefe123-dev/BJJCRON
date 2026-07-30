@@ -4,7 +4,7 @@ import { UserRole } from '../../types';
 import { Shield, GraduationCap, UserCheck, RefreshCw } from 'lucide-react';
 
 export const RoleSwitcher: React.FC = () => {
-  const { currentUser, switchRole, switchUser, users } = useAuth();
+  const { currentUser, switchRole, switchUser, users, deleteMyAccount } = useAuth();
 
   if (!currentUser) return null;
 
@@ -68,6 +68,17 @@ export const RoleSwitcher: React.FC = () => {
             ))}
           </select>
         )}
+
+        <button
+          onClick={() => {
+            deleteMyAccount();
+          }}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all font-bold bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 shadow-xs"
+          title="Exclua seu cadastro atual para poder se cadastrar como Mestre, Professor ou Aluno com o mesmo e-mail"
+        >
+          <RefreshCw className="w-3.5 h-3.5 text-rose-400" />
+          Excluir Conta / Recadastrar
+        </button>
       </div>
     </div>
   );

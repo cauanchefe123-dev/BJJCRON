@@ -46,6 +46,7 @@ interface AuthContextType {
   switchRole: (role: UserRole) => void;
   switchUser: (userId: string) => void;
   logout: () => void;
+  deleteMyAccount: () => { success: boolean; message: string };
   refreshUsersFromStorage: () => void;
 }
 
@@ -444,6 +445,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }): { success: boolean; message: string } => {
     const cleanEmail = studentData.email.trim().toLowerCase();
 
+    if (users.some(u => u.email.trim().toLowerCase() === cleanEmail)) {
+      return {
+        success: false,
+        message: 'Este e-mail já possui cadastro no sistema! Para usar o mesmo e-mail em outro perfil (Mestre, Professor ou Aluno), você precisa excluir os dados da conta atual primeiro clicando em "Excluir Conta & Recadastrar".'
+      };
+    }
+
     const newStudentId = `std-self-${Date.now()}`;
     const newUserId = `user-self-${Date.now()}`;
 
@@ -461,9 +469,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       avatarUrl: DEFAULT_BLACK_GI_AVATAR
     };
 
-    let updatedUsers = users.filter(u => u.email.trim().toLowerCase() !== cleanEmail);
-    updatedUsers.push(newUser);
-    setUsers(updatedUsers);
+    setUsers(prev => [...prev, newUser]);
+    const updatedUsers = [...users, newUser];
     localStorage.setItem('bjjcron_users', JSON.stringify(updatedUsers));
 
     // Create Student in bjjcron_students
@@ -524,7 +531,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (users.some(u => u.email.trim().toLowerCase() === cleanEmail)) {
       return {
         success: false,
-        message: 'Este e-mail já possui um cadastro no sistema. Tente fazer login.'
+        message: 'Este e-mail já possui cadastro no sistema! Para usar o mesmo e-mail em outro perfil (Mestre, Professor ou Aluno), você precisa excluir os dados da conta atual primeiro clicando em "Excluir Conta & Recadastrar".'
       };
     }
 
@@ -545,6 +552,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setUsers(prev => [...prev, newUser]);
+    const updatedUsers = [...users, newUser];
+    localStorage.setItem('bjjcron_users', JSON.stringify(updatedUsers));
 
     // Add to teachers list
     const savedTeachers = localStorage.getItem('bjjcron_teachers');
@@ -584,7 +593,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (users.some(u => u.email.trim().toLowerCase() === cleanEmail)) {
       return {
         success: false,
-        message: 'Este e-mail já possui um cadastro no sistema. Tente fazer login.'
+        message: 'Este e-mail já possui cadastro no sistema! Para usar o mesmo e-mail em outro perfil (Mestre, Professor ou Aluno), você precisa excluir os dados da conta atual primeiro clicando em "Excluir Conta & Recadastrar".'
       };
     }
 
@@ -603,6 +612,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setUsers(prev => [...prev, newUser]);
+    const updatedUsers = [...users, newUser];
+    localStorage.setItem('bjjcron_users', JSON.stringify(updatedUsers));
 
     // Save Academy Config
     if (adminData.academyName) {
@@ -695,6 +706,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
   };
 
+  const deleteMyAccount = (): { success: boolean; message: string } => {
+    if (!currentUser) {
+      return { success: false, message: 'Nenhum usuário logado para deletar.' };
+    }
+    const cleanEmail = currentUser.email.trim().toLowerCase();
+
+    // 1. Remove from users list
+    const remainingUsers = users.filter(u => u.email.trim().toLowerCase() !== cleanEmail && u.id !== currentUser.id);
+    setUsers(remainingUsers);
+    localStorage.setItem('bjjcron_users', JSON.stringify(remainingUsers));
+
+    // 2. Remove from students list
+    const savedStudents = localStorage.getItem('bjjcron_students');
+    if (savedStudents) {
+      try {
+        const studentsList = JSON.parse(savedStudents);
+        const remainingStudents = studentsList.filter((s: any) => 
+          s.id !== currentUser.studentId && 
+          (!s.email || s.email.trim().toLowerCase() !== cleanEmail)
+        );
+        localStorage.setItem('bjjcron_students', JSON.stringify(remainingStudents));
+      } catch (e) {}
+    }
+
+    // 3. Remove from teachers list
+    const savedTeachers = localStorage.getItem('bjjcron_teachers');
+    if (savedTeachers) {
+      try {
+        const teachersList = JSON.parse(savedTeachers);
+        const remainingTeachers = teachersList.filter((t: any) => 
+          t.id !== currentUser.studentId && 
+          (!t.email || t.email.trim().toLowerCase() !== cleanEmail)
+        );
+        localStorage.setItem('bjjcron_teachers', JSON.stringify(remainingTeachers));
+      } catch (e) {}
+    }
+
+    // 4. Logout current user
+    setCurrentUser(null);
+    localStorage.removeItem('bjjcron_current_user');
+
+    window.dispatchEvent(new Event('bjjcron_users_updated'));
+    window.dispatchEvent(new Event('bjjcron_students_updated'));
+
+    return {
+      success: true,
+      message: 'Conta excluída com sucesso! Agora você pode criar um novo cadastro (como Mestre, Professor ou Aluno) usando o mesmo e-mail.'
+    };
+  };
+
   return (
     <AuthContext.Provider value={{
       currentUser,
@@ -709,6 +770,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       switchRole,
       switchUser,
       logout,
+      deleteMyAccount,
       refreshUsersFromStorage
     }}>
       {children}

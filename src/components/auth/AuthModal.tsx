@@ -31,6 +31,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     registerStudentSelfService,
     registerTeacherSelfService,
     registerAdminSelfService,
+    deleteMyAccount,
     currentUser
   } = useAuth();
 
@@ -205,6 +206,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             Cadastre-se para acessar como <span className="text-amber-400 font-bold">Mestre / Administrador</span>, <span className="text-blue-400 font-bold">Professor</span> ou <span className="text-emerald-400 font-bold">Aluno</span>.
           </p>
         </div>
+
+        {/* Banner de Gerenciamento da Conta Atual */}
+        {currentUser && (
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400 font-bold shrink-0">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Logado atualmente como:</p>
+                <p className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  {currentUser.name}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                    currentUser.role === 'ADMIN' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                    currentUser.role === 'PROFESSOR' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                    'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  }`}>
+                    {currentUser.role}
+                  </span>
+                </p>
+                <p className="text-[11px] text-slate-400 truncate">{currentUser.email}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const res = deleteMyAccount();
+                setFeedback({ type: res.success ? 'success' : 'error', message: res.message });
+                setActiveTab('REGISTER');
+              }}
+              className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md"
+              title="Excluir cadastro para recadastrar como outro perfil (Mestre, Professor ou Aluno)"
+            >
+              <X className="w-4 h-4 text-rose-400" />
+              Excluir Conta & Recadastrar
+            </button>
+          </div>
+        )}
 
         {/* Mode Navigation Tabs */}
         <div className="grid grid-cols-3 p-1 bg-slate-950 rounded-2xl border border-slate-800/80 text-xs font-bold">
