@@ -6,7 +6,7 @@ import { BeltType } from '../../types';
 import { 
   Settings, Save, RefreshCw, Database, Shield, CheckCircle2, AlertCircle, 
   Upload, Image as ImageIcon, Sparkles, Users, UserCheck, UserX, Mail, 
-  Phone, Clock, BadgeAlert, Award, ChevronRight 
+  Phone, Clock, BadgeAlert, Award, ChevronRight, Trash2 
 } from 'lucide-react';
 
 const LOGO_PRESETS = [
@@ -29,7 +29,7 @@ const LOGO_PRESETS = [
 ];
 
 export const AcademySettings: React.FC = () => {
-  const { academyConfig, updateAcademyConfig, resetToDefaultData, students, updateStudent } = useData();
+  const { academyConfig, updateAcademyConfig, resetToDefaultData, clearAllDataToEmpty, students, updateStudent } = useData();
   const { approveUser, rejectUser } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'info' | 'requests'>('info');
@@ -399,20 +399,36 @@ export const AcademySettings: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Deseja restaurar todos os dados iniciais do sistema BJJCRON?')) {
-                  resetToDefaultData();
-                  alert('Dados restaurados com sucesso!');
-                }
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-xs font-bold"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Restaurar Dados Padrão de Teste
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Deseja restaurar todos os dados iniciais do sistema BJJCRON?')) {
+                    resetToDefaultData();
+                    alert('Dados restaurados com sucesso!');
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-xs font-bold"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Restaurar Dados Padrão de Teste
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Deseja ESVAZIAR todas as turmas, alunos e registros de teste/robôs do banco de dados local? A academia começará limpa do zero.')) {
+                    clearAllDataToEmpty();
+                    alert('Banco de dados esvaziado com sucesso!');
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-700/50 text-xs font-bold"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Limpar Todos os Registros (Zero Teste/Robôs)
+              </button>
+            </div>
 
             <button
               type="submit"

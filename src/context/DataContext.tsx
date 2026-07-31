@@ -79,6 +79,7 @@ interface DataContextType {
 
   // System Helpers
   resetToDefaultData: () => void;
+  clearAllDataToEmpty: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -610,6 +611,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAcademyConfig(INITIAL_ACADEMY_CONFIG);
   };
 
+  const clearAllDataToEmpty = () => {
+    localStorage.removeItem('bjjcron_students');
+    localStorage.removeItem('bjjcron_teachers');
+    localStorage.removeItem('bjjcron_classes');
+    localStorage.removeItem('bjjcron_attendances');
+    localStorage.removeItem('bjjcron_payments');
+    localStorage.removeItem('bjjcron_graduations');
+    localStorage.removeItem('bjjcron_belt_requests');
+    localStorage.removeItem('bjjcron_training_logs');
+    localStorage.removeItem('bjjcron_teacher_observations');
+
+    setStudents([]);
+    setTeachers([]);
+    setClasses([]);
+    setAttendances([]);
+    setPayments([]);
+    setGraduations([]);
+    setBeltRequests([]);
+    setTrainingLogs([]);
+    setTeacherObservations([]);
+  };
+
   return (
     <DataContext.Provider value={{
       students,
@@ -644,6 +667,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteTeacherObservation,
       updateAcademyConfig,
       resetToDefaultData,
+      clearAllDataToEmpty,
     }}>
       {children}
     </DataContext.Provider>
