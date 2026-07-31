@@ -231,7 +231,9 @@ export default function App() {
   return (
     <DataProvider>
       <AuthProvider>
-        <MainApp />
+        <ErrorBoundary>
+          <MainApp />
+        </ErrorBoundary>
       </AuthProvider>
     </DataProvider>
   );

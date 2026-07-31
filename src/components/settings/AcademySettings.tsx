@@ -74,7 +74,40 @@ export const AcademySettings: React.FC = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const maxDim = 320;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressedUrl = canvas.toDataURL('image/jpeg', 0.85);
+              setFormData(prev => ({ ...prev, logoUrl: compressedUrl }));
+            } else {
+              setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+            }
+          } catch (err) {
+            setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+          }
+        };
+        img.onerror = () => {
+          setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }

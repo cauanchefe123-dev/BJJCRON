@@ -148,8 +148,30 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
     logoUrl: ''
   });
 
+  const canCreateAcademy = currentUser?.role === 'ADMIN' || currentUser?.role === 'PROFESSOR';
+
+  const handleUnlinkAcademy = (academy: AcademyItem) => {
+    setLinkedAcademyId('');
+    localStorage.setItem(`bjjcron_student_academy_${currentUser?.id}`, '');
+
+    if (currentStudent) {
+      updateStudent(currentStudent.id, {
+        approvalStatus: 'PENDING',
+        notes: `Desvinculado da academia ${academy.name}. Aguardando novo vínculo.`
+      });
+    }
+
+    setToastMsg(`ℹ️ Você se desvinculou de "${academy.name}". Agora pode solicitar vínculo a outra academia.`);
+    setTimeout(() => setToastMsg(null), 7000);
+  };
+
   const handleCreateNewAcademy = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canCreateAcademy) {
+      setToastMsg('❌ Apenas Mestres ou Administradores podem cadastrar novas academias.');
+      setTimeout(() => setToastMsg(null), 5000);
+      return;
+    }
     if (!newAcademyData.name.trim()) return;
     saveAcademyToList(newAcademyData);
     const updatedList = getStoredAcademiesList();
@@ -305,6 +327,13 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
             <p className="text-[11px] text-slate-400">
               {activeAcademy.studentsCount} alunos treinando nesta equipe
             </p>
+            <button
+              type="button"
+              onClick={() => handleUnlinkAcademy(activeAcademy)}
+              className="mt-1 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all flex items-center gap-1.5"
+            >
+              Desvincular Academia
+            </button>
           </div>
         </div>
       )}
@@ -325,14 +354,16 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
           <div className="text-xs text-slate-400 font-medium">
             Exibindo <strong className="text-amber-400">{filteredAcademies.length}</strong> academias reais
           </div>
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            + Cadastrar Academia
-          </button>
+          {canCreateAcademy && (
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              + Cadastrar Academia
+            </button>
+          )}
         </div>
       </div>
 
@@ -393,10 +424,19 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
                 </span>
 
                 {isCurrent ? (
-                  <span className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" />
-                    Vinculado
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      Vinculado
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleUnlinkAcademy(academy)}
+                      className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all"
+                    >
+                      Desvincular
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
@@ -414,7 +454,7 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
       </div>
 
       {/* Create New Academy Modal */}
-      {isCreateModalOpen && (
+      {canCreateAcademy && isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
             <button

@@ -155,17 +155,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return INITIAL_ACADEMY_CONFIG;
   });
 
-  // Local Storage Persistence
-  useEffect(() => { localStorage.setItem('bjjcron_students', JSON.stringify(students)); }, [students]);
-  useEffect(() => { localStorage.setItem('bjjcron_teachers', JSON.stringify(teachers)); }, [teachers]);
-  useEffect(() => { localStorage.setItem('bjjcron_classes', JSON.stringify(classes)); }, [classes]);
-  useEffect(() => { localStorage.setItem('bjjcron_attendances', JSON.stringify(attendances)); }, [attendances]);
-  useEffect(() => { localStorage.setItem('bjjcron_payments', JSON.stringify(payments)); }, [payments]);
-  useEffect(() => { localStorage.setItem('bjjcron_graduations', JSON.stringify(graduations)); }, [graduations]);
-  useEffect(() => { localStorage.setItem('bjjcron_belt_requests', JSON.stringify(beltRequests)); }, [beltRequests]);
-  useEffect(() => { localStorage.setItem('bjjcron_training_logs', JSON.stringify(trainingLogs)); }, [trainingLogs]);
-  useEffect(() => { localStorage.setItem('bjjcron_teacher_observations', JSON.stringify(teacherObservations)); }, [teacherObservations]);
-  useEffect(() => { localStorage.setItem('bjjcron_academy_config', JSON.stringify(academyConfig)); }, [academyConfig]);
+  // Safe Local Storage Persistence
+  const safeSave = (key: string, val: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(val));
+    } catch (e) {
+      console.warn(`[Offline-First] Aviso ao salvar chave ${key} no localStorage (possível limite de cota atingido):`, e);
+    }
+  };
+
+  useEffect(() => { safeSave('bjjcron_students', students); }, [students]);
+  useEffect(() => { safeSave('bjjcron_teachers', teachers); }, [teachers]);
+  useEffect(() => { safeSave('bjjcron_classes', classes); }, [classes]);
+  useEffect(() => { safeSave('bjjcron_attendances', attendances); }, [attendances]);
+  useEffect(() => { safeSave('bjjcron_payments', payments); }, [payments]);
+  useEffect(() => { safeSave('bjjcron_graduations', graduations); }, [graduations]);
+  useEffect(() => { safeSave('bjjcron_belt_requests', beltRequests); }, [beltRequests]);
+  useEffect(() => { safeSave('bjjcron_training_logs', trainingLogs); }, [trainingLogs]);
+  useEffect(() => { safeSave('bjjcron_teacher_observations', teacherObservations); }, [teacherObservations]);
+  useEffect(() => { safeSave('bjjcron_academy_config', academyConfig); }, [academyConfig]);
 
   // Sync real PostgreSQL backend data on startup (falls back automatically to localStorage if offline)
   useEffect(() => {
