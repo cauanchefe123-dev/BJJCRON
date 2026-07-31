@@ -28,6 +28,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
 
   return (
     <div className="space-y-6">
+      {currentStudent.approvalStatus === 'PENDING' && (
+        <div className="bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 border-2 border-amber-500/60 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-lg shrink-0">
+              ⏳
+            </div>
+            <div>
+              <p className="font-extrabold text-amber-300 text-sm">Vínculo Pendente — Aguardando Aprovação na Equipe</p>
+              <p className="text-slate-300 text-xs mt-0.5 max-w-xl leading-relaxed">
+                Você solicitou vínculo com a equipe <strong>{academyConfig.name}</strong>. Sua solicitação está na fila do Professor ou Administrador da academia para ser aprovada.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('academies')}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shrink-0 transition-all shadow-md"
+          >
+            Gerenciar Vínculo →
+          </button>
+        </div>
+      )}
+
       {/* Student Profile Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-neutral-900 border border-slate-800 rounded-2xl p-6 text-white space-y-6 shadow-xl">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -105,9 +127,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
                 <span className="text-[10px] font-black uppercase text-amber-400">
                   Sua Academia Vinculada:
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  ATLETA ATIVO
-                </span>
+                {currentStudent.approvalStatus === 'PENDING' ? (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                    ⏳ VÍNCULO PENDENTE
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    ATLETA ATIVO
+                  </span>
+                )}
               </div>
               <h4 className="text-sm font-extrabold text-slate-100 mt-0.5">
                 {academyConfig.name} — Prof. {academyConfig.headCoachName || 'Gabriel "Fera" Santos'}

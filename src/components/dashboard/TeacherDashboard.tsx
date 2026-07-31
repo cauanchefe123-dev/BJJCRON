@@ -1,6 +1,7 @@
 import React from 'react';
 import { useData } from '../../context/DataContext';
 import { BeltBadge } from '../belts/BeltBadge';
+import { PendingStudentApprovals } from '../students/PendingStudentApprovals';
 import { QrCode, CalendarDays, Award, Users, CheckCircle, Flame, Clock } from 'lucide-react';
 
 interface TeacherDashboardProps {
@@ -47,6 +48,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, 
           </button>
         </div>
       </div>
+
+      {/* Student Approvals Interface */}
+      <PendingStudentApprovals />
 
       {/* Classes Schedule Today */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white space-y-4">

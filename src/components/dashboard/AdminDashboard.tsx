@@ -1,6 +1,7 @@
 import React from 'react';
 import { useData } from '../../context/DataContext';
 import { BeltBadge } from '../belts/BeltBadge';
+import { PendingStudentApprovals } from '../students/PendingStudentApprovals';
 import { Users, CreditCard, Award, QrCode, TrendingUp, AlertCircle, CheckCircle, Calendar, ArrowUpRight } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -126,6 +127,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onOp
           </p>
         </div>
       </div>
+
+      {/* Student Approvals Interface */}
+      <PendingStudentApprovals />
 
       {/* Main Grid: Belt Distribution & Graduation Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

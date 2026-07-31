@@ -291,7 +291,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       qrCodeToken: qrToken,
       totalClassesAttended: 0,
       classesSinceLastGraduation: 0,
-      approvalStatus: 'APPROVED',
+      approvalStatus: studentData.approvalStatus || 'PENDING',
       hasActivatedAccount: false,
     };
 
@@ -316,7 +316,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             studentId: newId,
             phone: studentData.phone || '',
             password: '123',
-            approvalStatus: 'APPROVED',
+            approvalStatus: studentData.approvalStatus || 'PENDING',
             isActivated: false,
             avatarUrl: (studentData.photoUrl && !studentData.photoUrl.includes('unsplash.com')) ? studentData.photoUrl : DEFAULT_BLACK_GI_AVATAR
           };
@@ -385,6 +385,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (updates.email) usersList[userIdx].email = updates.email.trim().toLowerCase();
           if (updates.phone) usersList[userIdx].phone = updates.phone;
           if (updates.photoUrl) usersList[userIdx].avatarUrl = updates.photoUrl;
+          if (updates.approvalStatus) usersList[userIdx].approvalStatus = updates.approvalStatus;
           localStorage.setItem('bjjcron_users', JSON.stringify(usersList));
           window.dispatchEvent(new Event('bjjcron_users_updated'));
         }

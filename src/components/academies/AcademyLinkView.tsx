@@ -222,11 +222,16 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
     setLinkedAcademyId(academy.id);
     localStorage.setItem(`bjjcron_student_academy_${currentUser?.id}`, academy.id);
 
+    const isAluno = currentUser?.role === 'ALUNO';
+    const newStatus = isAluno ? 'PENDING' : 'APPROVED';
+
     // If student is logged in, update their status to pending or approved based on academy
     if (currentStudent) {
       updateStudent(currentStudent.id, {
-        approvalStatus: 'PENDING',
-        notes: `Solicitou vínculo com a equipe ${academy.name} (Prof. ${academy.headCoachName}).`
+        approvalStatus: newStatus,
+        notes: isAluno
+          ? `Solicitou vínculo com a equipe ${academy.name} (Prof. ${academy.headCoachName}). Aguardando aprovação.`
+          : `Atuando pela equipe ${academy.name}.`
       });
     }
 
@@ -239,7 +244,11 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
       address: academy.city
     });
 
-    setToastMsg(`✅ Solicitação de vínculo enviada para ${academy.name}! O professor ${academy.headCoachName} recebeu o seu pedido na fila da equipe.`);
+    if (isAluno) {
+      setToastMsg(`⏳ Solicitação de vínculo enviada para "${academy.name}"! Seu status agora é PENDENTE e você deve aguardar o Professor ou Admin da equipe aprovar o seu vínculo.`);
+    } else {
+      setToastMsg(`✅ Equipe "${academy.name}" selecionada com sucesso!`);
+    }
     setTimeout(() => setToastMsg(null), 7000);
   };
 
@@ -254,6 +263,7 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
   });
 
   const activeAcademy = academiesList.find(a => a.id === linkedAcademyId) || academiesList[0];
+  const isStudentPending = currentUser?.role === 'ALUNO' && currentStudent?.approvalStatus === 'PENDING';
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -270,7 +280,7 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
             </span>
           </div>
           <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-            Selecione a academia em que você treina e solicite vínculo oficial com seu professor. Todas as academias já criadas no sistema aparecem com sua logomarca e mestre responsável.
+            Selecione a academia em que você treina e solicite vínculo oficial com seu professor. Ao solicitar vínculo como Aluno, seu pedido entra como <strong>PENDENTE</strong> e aguarda a aprovação do Professor ou Admin da equipe.
           </p>
         </div>
 
@@ -302,9 +312,15 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
             />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 shadow-sm">
-                  SUA ACADEMIA ATIVA
-                </span>
+                {isStudentPending ? (
+                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 shadow-sm animate-pulse">
+                    SOLICITAÇÃO PENDENTE DE APROVAÇÃO
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 shadow-sm">
+                    SUA ACADEMIA ATIVA
+                  </span>
+                )}
                 <span className="text-xs text-amber-300 font-semibold">
                   • {activeAcademy.city}
                 </span>
@@ -320,19 +336,28 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
           </div>
 
           <div className="flex flex-col items-start md:items-end gap-2 shrink-0 bg-slate-950/80 p-4 rounded-xl border border-slate-800 w-full md:w-auto">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Vínculo Registrado</span>
-            </div>
+            {isStudentPending ? (
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                <AlertCircle className="w-4 h-4" />
+                <span>Aguardando Aprovação do Mestre/Admin</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Vínculo Registrado</span>
+              </div>
+            )}
             <p className="text-[11px] text-slate-400">
-              {activeAcademy.studentsCount} alunos treinando nesta equipe
+              {isStudentPending
+                ? 'Sua solicitação está na fila de análise desta academia'
+                : `${activeAcademy.studentsCount} alunos treinando nesta equipe`}
             </p>
             <button
               type="button"
               onClick={() => handleUnlinkAcademy(activeAcademy)}
               className="mt-1 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all flex items-center gap-1.5"
             >
-              Desvincular Academia
+              {isStudentPending ? 'Cancelar Solicitação' : 'Desvincular Academia'}
             </button>
           </div>
         </div>
@@ -425,16 +450,22 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
 
                 {isCurrent ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" />
-                      Vinculado
-                    </span>
+                    {isStudentPending ? (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1" title="Aguardando aprovação do Professor ou Admin da Equipe">
+                        ⏳ Pendente de Aprovação
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        Vinculado
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleUnlinkAcademy(academy)}
                       className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all"
                     >
-                      Desvincular
+                      {isStudentPending ? 'Cancelar' : 'Desvincular'}
                     </button>
                   </div>
                 ) : (

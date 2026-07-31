@@ -147,6 +147,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    if (currentUser) {
+      const updatedUser = users.find(u => u.id === currentUser.id);
+      if (updatedUser && updatedUser.approvalStatus !== currentUser.approvalStatus) {
+        setCurrentUser(updatedUser);
+      }
+    }
+  }, [users]);
+
   const refreshUsersFromStorage = () => {
     const saved = localStorage.getItem('bjjcron_users');
     if (saved) {
@@ -238,7 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         paymentDueDateDay: 10,
         paymentStatus: 'PENDENTE',
         qrCodeToken: `BJJCRON-${newStudentId}`,
-        approvalStatus: 'APPROVED',
+        approvalStatus: 'PENDING',
         hasActivatedAccount: true,
         password: password || '123'
       };
@@ -258,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         studentId: newStudentId,
         phone: '',
         password: password || '123',
-        approvalStatus: 'APPROVED',
+        approvalStatus: 'PENDING',
         isActivated: true,
         avatarUrl: newStudentObj.photoUrl
       };
@@ -268,8 +277,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_users', JSON.stringify(currentUsers));
     }
 
-    // Force approval & activation
-    found.approvalStatus = 'APPROVED';
     found.isActivated = true;
     if (password) {
       found.password = password;
@@ -464,7 +471,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       studentId: newStudentId,
       phone: studentData.phone,
       password: studentData.password,
-      approvalStatus: 'APPROVED',
+      approvalStatus: 'PENDING',
       isActivated: true,
       avatarUrl: DEFAULT_BLACK_GI_AVATAR
     };
@@ -498,7 +505,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       paymentDueDateDay: 10,
       paymentStatus: 'PENDENTE',
       qrCodeToken: `BJJCRON-${newStudentId}`,
-      approvalStatus: 'APPROVED',
+      approvalStatus: 'PENDING',
+      notes: 'Nova solicitação de vínculo aguardando aprovação na equipe.',
       hasActivatedAccount: true,
       password: studentData.password
     };
