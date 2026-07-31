@@ -39,6 +39,7 @@ export const BeltBadge: React.FC<BeltBadgeProps> = ({
   showLabel = true,
 }) => {
   const config = BELT_COLORS[belt] || BELT_COLORS.BRANCA;
+  const beltName = BELT_NAMES[belt] || BELT_NAMES.BRANCA;
 
   const sizeClasses = {
     sm: { height: 'h-6', width: 'w-24', barWidth: 'w-7', label: 'text-xs', stripe: 'w-1 h-3' },
@@ -51,14 +52,14 @@ export const BeltBadge: React.FC<BeltBadgeProps> = ({
     <div className="inline-flex flex-col items-start gap-1">
       <div
         className={`relative flex items-center justify-between rounded-md overflow-hidden shadow-sm border ${config.bg} ${config.border} ${sizeClasses.height} ${sizeClasses.width}`}
-        title={`${BELT_NAMES[belt]} - ${stripes} grau(s)`}
+        title={`${beltName} - ${stripes} grau(s)`}
       >
         {/* Main Belt Strap Texture / Seam details */}
         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-black/10"></div>
 
         {/* Belt Name / Rank Text */}
         <span className={`px-2 z-10 truncate tracking-wide ${config.text} ${sizeClasses.label}`}>
-          {BELT_NAMES[belt].replace('Faixa ', '')}
+          {beltName.replace('Faixa ', '')}
         </span>
 
         {/* Belt Bar (Ponteira) */}

@@ -140,7 +140,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [academyConfig, setAcademyConfig] = useState<AcademyConfig>(() => {
     const saved = localStorage.getItem('bjjcron_academy_config');
-    return saved ? JSON.parse(saved) : INITIAL_ACADEMY_CONFIG;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...INITIAL_ACADEMY_CONFIG,
+          ...parsed,
+          graduationCriteria: parsed.graduationCriteria || INITIAL_ACADEMY_CONFIG.graduationCriteria,
+        };
+      } catch {
+        return INITIAL_ACADEMY_CONFIG;
+      }
+    }
+    return INITIAL_ACADEMY_CONFIG;
   });
 
   // Local Storage Persistence
@@ -154,6 +166,87 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => { localStorage.setItem('bjjcron_training_logs', JSON.stringify(trainingLogs)); }, [trainingLogs]);
   useEffect(() => { localStorage.setItem('bjjcron_teacher_observations', JSON.stringify(teacherObservations)); }, [teacherObservations]);
   useEffect(() => { localStorage.setItem('bjjcron_academy_config', JSON.stringify(academyConfig)); }, [academyConfig]);
+
+  // Sync real PostgreSQL backend data on startup (falls back automatically to localStorage if offline)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPostgresData = async () => {
+      try {
+        const [
+          resStudents,
+          resTeachers,
+          resClasses,
+          resAttendances,
+          resPayments,
+          resBeltRequests,
+          resTrainingLogs,
+          resTeacherObs,
+          resAcademyConfig,
+        ] = await Promise.all([
+          fetch('/api/students').catch(() => null),
+          fetch('/api/teachers').catch(() => null),
+          fetch('/api/classes').catch(() => null),
+          fetch('/api/attendances').catch(() => null),
+          fetch('/api/payments').catch(() => null),
+          fetch('/api/belt-requests').catch(() => null),
+          fetch('/api/training-logs').catch(() => null),
+          fetch('/api/teacher-observations').catch(() => null),
+          fetch('/api/academy-config').catch(() => null),
+        ]);
+
+        if (!isMounted) return;
+
+        if (resStudents && resStudents.ok) {
+          const data = await resStudents.json();
+          if (Array.isArray(data)) setStudents(data);
+        }
+        if (resTeachers && resTeachers.ok) {
+          const data = await resTeachers.json();
+          if (Array.isArray(data)) setTeachers(data);
+        }
+        if (resClasses && resClasses.ok) {
+          const data = await resClasses.json();
+          if (Array.isArray(data)) setClasses(data);
+        }
+        if (resAttendances && resAttendances.ok) {
+          const data = await resAttendances.json();
+          if (Array.isArray(data)) setAttendances(data);
+        }
+        if (resPayments && resPayments.ok) {
+          const data = await resPayments.json();
+          if (Array.isArray(data)) setPayments(data);
+        }
+        if (resBeltRequests && resBeltRequests.ok) {
+          const data = await resBeltRequests.json();
+          if (Array.isArray(data)) setBeltRequests(data);
+        }
+        if (resTrainingLogs && resTrainingLogs.ok) {
+          const data = await resTrainingLogs.json();
+          if (Array.isArray(data)) setTrainingLogs(data);
+        }
+        if (resTeacherObs && resTeacherObs.ok) {
+          const data = await resTeacherObs.json();
+          if (Array.isArray(data)) setTeacherObservations(data);
+        }
+        if (resAcademyConfig && resAcademyConfig.ok) {
+          const data = await resAcademyConfig.json();
+          if (data && data.name) {
+            setAcademyConfig(prev => ({
+              ...INITIAL_ACADEMY_CONFIG,
+              ...prev,
+              ...data,
+              graduationCriteria: data.graduationCriteria || prev.graduationCriteria || INITIAL_ACADEMY_CONFIG.graduationCriteria,
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn('PostgreSQL sync fallback to localStorage offline-first:', err);
+      }
+    };
+
+    fetchPostgresData();
+    return () => { isMounted = false; };
+  }, []);
 
   // Sync state when students or users are updated in localStorage by AuthContext or another tab
   useEffect(() => {
@@ -245,6 +338,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setPayments(prev => [newPayment, ...prev]);
 
+    fetch('/api/students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newStudent),
+    }).catch(() => {});
+    fetch('/api/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPayment),
+    }).catch(() => {});
+
     window.dispatchEvent(new Event('bjjcron_students_updated'));
     return newStudent;
   };
@@ -255,6 +359,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
       return updated;
     });
+
+    fetch(`/api/students/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(() => {});
 
     // Also update corresponding user in bjjcron_users
     try {
@@ -283,6 +393,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
       return updated;
     });
+    fetch(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
     window.dispatchEvent(new Event('bjjcron_students_updated'));
   };
 
@@ -320,6 +431,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return s;
     }));
+
+    fetch(`/api/students/${encodeURIComponent(studentId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        belt: newBelt,
+        stripes: newStripes,
+        classesSinceLastGraduation: 0,
+      }),
+    }).catch(() => {});
   };
 
   const requestBeltChange = (
@@ -584,7 +705,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Config
   const updateAcademyConfig = (updates: Partial<AcademyConfig>) => {
-    setAcademyConfig(prev => ({ ...prev, ...updates }));
+    setAcademyConfig(prev => {
+      const updated = { ...prev, ...updates };
+      fetch('/api/academy-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      }).catch(() => {});
+      return updated;
+    });
   };
 
   const resetToDefaultData = () => {
@@ -609,6 +738,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTrainingLogs(INITIAL_TRAINING_LOGS);
     setTeacherObservations(INITIAL_TEACHER_OBSERVATIONS);
     setAcademyConfig(INITIAL_ACADEMY_CONFIG);
+    fetch('/api/reset-data', { method: 'POST' }).catch(() => {});
   };
 
   const clearAllDataToEmpty = () => {
@@ -631,6 +761,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBeltRequests([]);
     setTrainingLogs([]);
     setTeacherObservations([]);
+    fetch('/api/clear-all-data', { method: 'POST' }).catch(() => {});
   };
 
   return (

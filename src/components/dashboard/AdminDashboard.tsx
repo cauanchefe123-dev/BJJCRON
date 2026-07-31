@@ -32,7 +32,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onOp
 
   // Students ready for promotion (e.g. classesSinceLastGraduation >= 30)
   const studentsReadyForGraduation = students.filter(s => {
-    const req = academyConfig.graduationCriteria[s.belt]?.classesPerStripe || 30;
+    const req = academyConfig?.graduationCriteria?.[s.belt]?.classesPerStripe || 30;
     return s.classesSinceLastGraduation >= req;
   });
 

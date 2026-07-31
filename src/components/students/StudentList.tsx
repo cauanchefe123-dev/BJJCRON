@@ -225,7 +225,7 @@ export const StudentList: React.FC<StudentListProps> = ({
                         <div>
                           <p className="font-bold text-slate-100">{s.name}</p>
                           <p className="text-[10px] text-slate-400 flex items-center gap-2">
-                            <span>{s.phone}</span> • <span>{s.category}</span>
+                            <span>{s.phone}</span> • <span>{s.ageCategory}</span>
                           </p>
                         </div>
                       </div>

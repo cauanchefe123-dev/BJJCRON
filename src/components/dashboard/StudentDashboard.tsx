@@ -23,7 +23,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
   const pendingPayment = myPayments.find(p => p.status === 'PENDENTE' || p.status === 'ATRASADO');
 
   // Calculate belt progress
-  const reqClassesPerStripe = academyConfig.graduationCriteria[currentStudent.belt]?.classesPerStripe || 30;
+  const reqClassesPerStripe = academyConfig?.graduationCriteria?.[currentStudent.belt]?.classesPerStripe || 30;
   const progressPercent = Math.min(100, Math.round((currentStudent.classesSinceLastGraduation / reqClassesPerStripe) * 100));
 
   return (
