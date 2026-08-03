@@ -36,6 +36,7 @@ import { TeacherObservationsView } from './components/observations/TeacherObserv
 import { ReportsView } from './components/reports/ReportsView';
 import { AcademySettings } from './components/settings/AcademySettings';
 import { AcademyLinkView } from './components/academies/AcademyLinkView';
+import { AdminStudentDashboardView } from './components/dashboard/AdminStudentDashboardView';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 
 import { PaymentRecord, Student } from './types';
@@ -147,6 +148,13 @@ function MainApp() {
 
               {activeTab === 'academies' && (
                 <AcademyLinkView onNavigateHome={() => setActiveTab('dashboard')} />
+              )}
+
+              {activeTab === 'students-dashboard' && (
+                <AdminStudentDashboardView
+                  onNavigate={setActiveTab}
+                  onOpenPixModal={(p) => setPixModalPayment(p)}
+                />
               )}
 
               {activeTab === 'teachers' && <TeacherManager />}

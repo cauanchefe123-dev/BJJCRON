@@ -352,13 +352,19 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
                 ? 'Sua solicitação está na fila de análise desta academia'
                 : `${activeAcademy.studentsCount} alunos treinando nesta equipe`}
             </p>
-            <button
-              type="button"
-              onClick={() => handleUnlinkAcademy(activeAcademy)}
-              className="mt-1 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all flex items-center gap-1.5"
-            >
-              {isStudentPending ? 'Cancelar Solicitação' : 'Desvincular Academia'}
-            </button>
+            {currentUser?.role !== 'ADMIN' ? (
+              <button
+                type="button"
+                onClick={() => handleUnlinkAcademy(activeAcademy)}
+                className="mt-1 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all flex items-center gap-1.5"
+              >
+                {isStudentPending ? 'Cancelar Solicitação' : 'Desvincular Academia'}
+              </button>
+            ) : (
+              <span className="mt-1 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold inline-block">
+                🔒 Responsável (Não desvinculável)
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -460,13 +466,19 @@ export const AcademyLinkView: React.FC<AcademyLinkViewProps> = ({ onNavigateHome
                         Vinculado
                       </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => handleUnlinkAcademy(academy)}
-                      className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all"
-                    >
-                      {isStudentPending ? 'Cancelar' : 'Desvincular'}
-                    </button>
+                    {currentUser?.role !== 'ADMIN' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleUnlinkAcademy(academy)}
+                        className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all"
+                      >
+                        {isStudentPending ? 'Cancelar' : 'Desvincular'}
+                      </button>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold">
+                        Responsável
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <button
