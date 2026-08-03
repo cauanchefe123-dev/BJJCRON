@@ -206,7 +206,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (resStudents && resStudents.ok) {
           const data = await resStudents.json();
-          if (Array.isArray(data)) setStudents(data);
+          if (Array.isArray(data)) {
+            setStudents(data);
+            localStorage.setItem('bjjcron_students', JSON.stringify(data));
+            window.dispatchEvent(new Event('bjjcron_students_updated'));
+          }
         }
         if (resTeachers && resTeachers.ok) {
           const data = await resTeachers.json();

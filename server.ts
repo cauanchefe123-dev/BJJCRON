@@ -193,6 +193,77 @@ async function startServer() {
     }
   });
 
+  app.post('/api/auth/first-access', async (req, res) => {
+    try {
+      const { email, newPassword } = req.body;
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'E-mail é obrigatório.' });
+      }
+      const cleanEmail = String(email).trim().toLowerCase();
+
+      // 1) Verify if user exists in schema.users
+      let userList = await db.select().from(schema.users).where(eq(schema.users.email, cleanEmail));
+      let targetUser = userList[0];
+
+      // 2) If not found in users, check students table in Postgres!
+      if (!targetUser) {
+        const studentList = await db.select().from(schema.students);
+        const matchingStudent = studentList.find(s => s.email && s.email.trim().toLowerCase() === cleanEmail);
+        if (matchingStudent) {
+          const [created] = await db.insert(schema.users).values({
+            uid: `uid-std-${matchingStudent.id}-${Date.now()}`,
+            name: matchingStudent.name,
+            email: cleanEmail,
+            role: 'ALUNO',
+            avatarUrl: matchingStudent.photoUrl || '',
+            studentId: String(matchingStudent.id),
+            phone: matchingStudent.phone || '',
+            approvalStatus: 'APPROVED',
+            password: newPassword || '123',
+            isActivated: true,
+          }).returning();
+          targetUser = created;
+        }
+      }
+
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'E-mail não cadastrado no sistema! Por favor, realize o seu cadastro antes de acessar sua conta.'
+        });
+      }
+
+      // Update user in Postgres
+      const [updatedUser] = await db.update(schema.users)
+        .set({
+          password: newPassword || '123',
+          isActivated: true,
+          approvalStatus: 'APPROVED'
+        })
+        .where(eq(schema.users.id, targetUser.id))
+        .returning();
+
+      // Also update student approvalStatus in students table if linked
+      if (targetUser.studentId) {
+        const stdIdNum = parseInt(targetUser.studentId, 10);
+        if (!isNaN(stdIdNum)) {
+          await db.update(schema.students)
+            .set({ approvalStatus: 'APPROVED' })
+            .where(eq(schema.students.id, stdIdNum));
+        }
+      }
+
+      res.json({
+        success: true,
+        user: formatUserFromDb(updatedUser),
+        message: `Conta ativada com sucesso! Bem-vindo(a), ${updatedUser.name}.`
+      });
+    } catch (err: any) {
+      console.error('Error activating first access:', err?.message);
+      res.status(500).json({ success: false, message: 'Erro no servidor ao ativar o 1º acesso.' });
+    }
+  });
+
   // Health Check Endpoint
   app.get('/api/health', async (req, res) => {
     try {
@@ -327,6 +398,34 @@ async function startServer() {
           }).onConflictDoNothing();
         }
       }
+
+      // Sincroniza automaticamente qualquer Aluno/Aluna cadastrado na tabela de alunos para a tabela de usuários
+      try {
+        const allStudents = await db.select().from(schema.students);
+        for (const st of allStudents) {
+          if (st.email && st.email.trim()) {
+            const cleanEmail = st.email.trim().toLowerCase();
+            if (!all.some(existing => existing.email && existing.email.toLowerCase() === cleanEmail)) {
+              neededSeed = true;
+              await db.insert(schema.users).values({
+                uid: `uid-std-${st.id}-${Date.now()}`,
+                name: st.name,
+                email: cleanEmail,
+                role: 'ALUNO',
+                avatarUrl: st.photoUrl || '',
+                studentId: String(st.id),
+                phone: st.phone || '',
+                approvalStatus: st.approvalStatus || 'APPROVED',
+                password: '123',
+                isActivated: false,
+              }).onConflictDoNothing();
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn('Erro na sincronização de alunos para usuários:', syncErr);
+      }
+
       if (neededSeed) {
         all = await db.select().from(schema.users).orderBy(desc(schema.users.id));
       }
@@ -471,6 +570,30 @@ async function startServer() {
         qrCodeToken: s.qrCodeToken || `token-${Date.now()}`,
         approvalStatus: s.approvalStatus || 'PENDING',
       }).returning();
+
+      if (s.email && s.email.trim()) {
+        try {
+          const cleanEmail = s.email.trim().toLowerCase();
+          const existing = await db.select().from(schema.users).where(eq(schema.users.email, cleanEmail));
+          if (existing.length === 0) {
+            await db.insert(schema.users).values({
+              uid: `uid-std-${inserted.id}-${Date.now()}`,
+              name: s.name,
+              email: cleanEmail,
+              role: 'ALUNO',
+              avatarUrl: s.photoUrl || '',
+              studentId: String(inserted.id),
+              phone: s.phone || '',
+              approvalStatus: s.approvalStatus || 'APPROVED',
+              password: '123',
+              isActivated: false,
+            });
+          }
+        } catch (uErr) {
+          console.warn('Erro ao criar usuário para aluno no Postgres:', uErr);
+        }
+      }
+
       res.json(formatStudentFromDb(inserted));
     } catch (err: any) {
       console.error('Error creating student in Postgres:', err?.message);

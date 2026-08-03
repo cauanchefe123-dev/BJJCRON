@@ -326,6 +326,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
 
+    // Tenta ativar também no backend Postgres de forma assíncrona/imediata
+    fetch('/api/auth/first-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cleanEmail, newPassword: newPassword || '123' })
+    }).then(res => res.json()).then(data => {
+      if (data && data.success && data.user) {
+        // Recarrega lista de usuários do backend para manter sincronizado
+        fetch('/api/users')
+          .then(r => r.json())
+          .then(list => {
+            if (Array.isArray(list)) {
+              setUsers(list);
+              localStorage.setItem('bjjcron_users', JSON.stringify(list));
+              window.dispatchEvent(new Event('bjjcron_users_updated'));
+            }
+          })
+          .catch(() => {});
+      }
+    }).catch(() => {});
+
     let currentUsers = [...users];
     const savedUsers = localStorage.getItem('bjjcron_users');
     if (savedUsers) {
