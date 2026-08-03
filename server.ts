@@ -517,6 +517,19 @@ async function startServer() {
     }
   });
 
+  app.put('/api/classes/:id', async (req, res) => {
+    try {
+      const idNum = parseInt(req.params.id, 10);
+      const updates = req.body;
+      if (!isNaN(idNum)) {
+        await db.update(schema.classes).set(updates).where(eq(schema.classes.id, idNum));
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message });
+    }
+  });
+
   app.delete('/api/classes/:id', async (req, res) => {
     try {
       const idNum = parseInt(req.params.id, 10);
@@ -571,6 +584,18 @@ async function startServer() {
         verifiedBy: a.verifiedBy || '',
       }).returning();
       res.json(formatAttendanceFromDb(inserted));
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message });
+    }
+  });
+
+  app.delete('/api/attendances/:id', async (req, res) => {
+    try {
+      const idNum = parseInt(req.params.id, 10);
+      if (!isNaN(idNum)) {
+        await db.delete(schema.attendances).where(eq(schema.attendances.id, idNum));
+      }
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err?.message });
     }
@@ -633,6 +658,18 @@ async function startServer() {
       const updates = req.body;
       if (!isNaN(idNum)) {
         await db.update(schema.payments).set(updates).where(eq(schema.payments.id, idNum));
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message });
+    }
+  });
+
+  app.delete('/api/payments/:id', async (req, res) => {
+    try {
+      const idNum = parseInt(req.params.id, 10);
+      if (!isNaN(idNum)) {
+        await db.delete(schema.payments).where(eq(schema.payments.id, idNum));
       }
       res.json({ success: true });
     } catch (err: any) {
@@ -704,6 +741,18 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/belt-requests/:id', async (req, res) => {
+    try {
+      const idNum = parseInt(req.params.id, 10);
+      if (!isNaN(idNum)) {
+        await db.delete(schema.beltRequests).where(eq(schema.beltRequests.id, idNum));
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message });
+    }
+  });
+
   // ==========================================
   // TRAINING LOGS ENDPOINTS
   // ==========================================
@@ -744,6 +793,18 @@ async function startServer() {
         moodRating: l.moodRating || 5,
       }).returning();
       res.json(formatTrainingLogFromDb(inserted));
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message });
+    }
+  });
+
+  app.delete('/api/training-logs/:id', async (req, res) => {
+    try {
+      const idNum = parseInt(req.params.id, 10);
+      if (!isNaN(idNum)) {
+        await db.delete(schema.trainingLogs).where(eq(schema.trainingLogs.id, idNum));
+      }
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err?.message });
     }

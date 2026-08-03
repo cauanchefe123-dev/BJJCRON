@@ -485,7 +485,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: 'PENDING',
     };
 
-    setBeltRequests(prev => [newRequest, ...prev]);
+    setBeltRequests(prev => {
+      const updated = [newRequest, ...prev];
+      localStorage.setItem('bjjcron_belt_requests', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch('/api/belt-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRequest),
+    }).catch(() => {});
+
     return {
       success: true,
       message: 'Solicitação de troca de faixa enviada com sucesso! Aguarde a aprovação do seu Professor.'
@@ -504,33 +515,59 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       req.notes ? `[Solicitação Aprovada] ${req.notes}` : 'Solicitação de alteração de faixa aprovada pelo professor.'
     );
 
-    setBeltRequests(prev =>
-      prev.map(r =>
+    const reviewedAt = new Date().toISOString().split('T')[0];
+    setBeltRequests(prev => {
+      const updated = prev.map(r =>
         r.id === requestId
           ? {
               ...r,
               status: 'APPROVED',
               reviewedBy: reviewerName,
-              reviewedAt: new Date().toISOString().split('T')[0],
+              reviewedAt,
             }
           : r
-      )
-    );
+      );
+      localStorage.setItem('bjjcron_belt_requests', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch(`/api/belt-requests/${encodeURIComponent(requestId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'APPROVED',
+        reviewedBy: reviewerName,
+        reviewedAt,
+      }),
+    }).catch(() => {});
   };
 
   const rejectBeltChange = (requestId: string, reviewerName: string) => {
-    setBeltRequests(prev =>
-      prev.map(r =>
+    const reviewedAt = new Date().toISOString().split('T')[0];
+    setBeltRequests(prev => {
+      const updated = prev.map(r =>
         r.id === requestId
           ? {
               ...r,
               status: 'REJECTED',
               reviewedBy: reviewerName,
-              reviewedAt: new Date().toISOString().split('T')[0],
+              reviewedAt,
             }
           : r
-      )
-    );
+      );
+      localStorage.setItem('bjjcron_belt_requests', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch(`/api/belt-requests/${encodeURIComponent(requestId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'REJECTED',
+        reviewedBy: reviewerName,
+        reviewedAt,
+      }),
+    }).catch(() => {});
   };
 
   // Teacher CRUD
@@ -539,16 +576,43 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...teacherData,
       id: `prof-${Date.now()}`,
     };
-    setTeachers(prev => [newTeacher, ...prev]);
+    setTeachers(prev => {
+      const updated = [newTeacher, ...prev];
+      localStorage.setItem('bjjcron_teachers', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch('/api/teachers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newTeacher),
+    }).catch(() => {});
+
     return newTeacher;
   };
 
   const updateTeacher = (id: string, updates: Partial<Teacher>) => {
-    setTeachers(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    setTeachers(prev => {
+      const updated = prev.map(t => t.id === id ? { ...t, ...updates } : t);
+      localStorage.setItem('bjjcron_teachers', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch(`/api/teachers/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(() => {});
   };
 
   const deleteTeacher = (id: string) => {
-    setTeachers(prev => prev.filter(t => t.id !== id));
+    setTeachers(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      localStorage.setItem('bjjcron_teachers', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch(`/api/teachers/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
   };
 
   // Class CRUD
@@ -557,15 +621,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...classData,
       id: `cls-${Date.now()}`,
     };
-    setClasses(prev => [...prev, newClass]);
+    setClasses(prev => {
+      const updated = [...prev, newClass];
+      localStorage.setItem('bjjcron_classes', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch('/api/classes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newClass),
+    }).catch(() => {});
   };
 
   const updateClass = (id: string, updates: Partial<BJJClass>) => {
-    setClasses(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    setClasses(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, ...updates } : c);
+      localStorage.setItem('bjjcron_classes', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch(`/api/classes/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).catch(() => {});
   };
 
   const deleteClass = (id: string) => {
-    setClasses(prev => prev.filter(c => c.id !== id));
+    setClasses(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      localStorage.setItem('bjjcron_classes', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch(`/api/classes/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
   };
 
   // Attendance
@@ -623,19 +713,42 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       verifiedBy,
     };
 
-    setAttendances(prev => [newRecord, ...prev]);
+    setAttendances(prev => {
+      const updated = [newRecord, ...prev];
+      localStorage.setItem('bjjcron_attendances', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch('/api/attendances', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRecord),
+    }).catch(() => {});
 
     // Update student's class counter
-    setStudents(prev => prev.map(s => {
-      if (s.id === student.id) {
-        return {
-          ...s,
-          totalClassesAttended: s.totalClassesAttended + 1,
-          classesSinceLastGraduation: s.classesSinceLastGraduation + 1,
-        };
-      }
-      return s;
-    }));
+    setStudents(prev => {
+      const updated = prev.map(s => {
+        if (s.id === student.id) {
+          const updatedStudent = {
+            ...s,
+            totalClassesAttended: s.totalClassesAttended + 1,
+            classesSinceLastGraduation: s.classesSinceLastGraduation + 1,
+          };
+          fetch(`/api/students/${encodeURIComponent(s.id)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              totalClassesAttended: updatedStudent.totalClassesAttended,
+              classesSinceLastGraduation: updatedStudent.classesSinceLastGraduation,
+            }),
+          }).catch(() => {});
+          return updatedStudent;
+        }
+        return s;
+      });
+      localStorage.setItem('bjjcron_students', JSON.stringify(updated));
+      return updated;
+    });
 
     return {
       success: true,
@@ -646,17 +759,36 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const removeAttendance = (id: string) => {
     const record = attendances.find(a => a.id === id);
     if (record) {
-      setAttendances(prev => prev.filter(a => a.id !== id));
-      setStudents(prev => prev.map(s => {
-        if (s.id === record.studentId) {
-          return {
-            ...s,
-            totalClassesAttended: Math.max(0, s.totalClassesAttended - 1),
-            classesSinceLastGraduation: Math.max(0, s.classesSinceLastGraduation - 1),
-          };
-        }
-        return s;
-      }));
+      setAttendances(prev => {
+        const updated = prev.filter(a => a.id !== id);
+        localStorage.setItem('bjjcron_attendances', JSON.stringify(updated));
+        return updated;
+      });
+      fetch(`/api/attendances/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
+
+      setStudents(prev => {
+        const updated = prev.map(s => {
+          if (s.id === record.studentId) {
+            const updatedStudent = {
+              ...s,
+              totalClassesAttended: Math.max(0, s.totalClassesAttended - 1),
+              classesSinceLastGraduation: Math.max(0, s.classesSinceLastGraduation - 1),
+            };
+            fetch(`/api/students/${encodeURIComponent(s.id)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                totalClassesAttended: updatedStudent.totalClassesAttended,
+                classesSinceLastGraduation: updatedStudent.classesSinceLastGraduation,
+              }),
+            }).catch(() => {});
+            return updatedStudent;
+          }
+          return s;
+        });
+        localStorage.setItem('bjjcron_students', JSON.stringify(updated));
+        return updated;
+      });
     }
   };
 
@@ -666,24 +798,66 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...paymentData,
       id: `pay-${Date.now()}`,
     };
-    setPayments(prev => [newPayment, ...prev]);
+    setPayments(prev => {
+      const updated = [newPayment, ...prev];
+      localStorage.setItem('bjjcron_payments', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch('/api/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPayment),
+    }).catch(() => {});
   };
 
   const markPaymentAsPaid = (paymentId: string, method: 'PIX' | 'CARTAO' | 'DINHEIRO' | 'BOLETO') => {
     const todayStr = new Date().toISOString().split('T')[0];
-    setPayments(prev => prev.map(p => {
-      if (p.id === paymentId) {
-        // Also update student status
-        setStudents(sPrev => sPrev.map(st => st.id === p.studentId ? { ...st, paymentStatus: 'PAGO' as PaymentStatus, lastPaymentDate: todayStr } : st));
-        return {
-          ...p,
-          status: 'PAGO' as PaymentStatus,
-          paymentDate: todayStr,
-          paymentMethod: method,
-        };
-      }
-      return p;
-    }));
+    setPayments(prev => {
+      const updated = prev.map(p => {
+        if (p.id === paymentId) {
+          fetch(`/api/payments/${encodeURIComponent(paymentId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              status: 'PAGO',
+              paymentDate: todayStr,
+              paymentMethod: method,
+            }),
+          }).catch(() => {});
+
+          return {
+            ...p,
+            status: 'PAGO' as PaymentStatus,
+            paymentDate: todayStr,
+            paymentMethod: method,
+          };
+        }
+        return p;
+      });
+      localStorage.setItem('bjjcron_payments', JSON.stringify(updated));
+      return updated;
+    });
+
+    setStudents(sPrev => {
+      const targetPayment = payments.find(p => p.id === paymentId);
+      const updated = sPrev.map(st => {
+        if (targetPayment && st.id === targetPayment.studentId) {
+          fetch(`/api/students/${encodeURIComponent(st.id)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentStatus: 'PAGO',
+              lastPaymentDate: todayStr,
+            }),
+          }).catch(() => {});
+          return { ...st, paymentStatus: 'PAGO' as PaymentStatus, lastPaymentDate: todayStr };
+        }
+        return st;
+      });
+      localStorage.setItem('bjjcron_students', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // Training Logs
@@ -692,7 +866,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...logData,
       id: `log-${Date.now()}`,
     };
-    setTrainingLogs(prev => [newLog, ...prev]);
+    setTrainingLogs(prev => {
+      const updated = [newLog, ...prev];
+      localStorage.setItem('bjjcron_training_logs', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch('/api/training-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newLog),
+    }).catch(() => {});
   };
 
   // Teacher Observations
@@ -705,11 +889,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `obs-${Date.now()}`,
       date: todayStr
     };
-    setTeacherObservations(prev => [newObs, ...prev]);
+    setTeacherObservations(prev => {
+      const updated = [newObs, ...prev];
+      localStorage.setItem('bjjcron_teacher_observations', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch('/api/teacher-observations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newObs),
+    }).catch(() => {});
   };
 
   const deleteTeacherObservation = (id: string) => {
-    setTeacherObservations(prev => prev.filter(o => o.id !== id));
+    setTeacherObservations(prev => {
+      const updated = prev.filter(o => o.id !== id);
+      localStorage.setItem('bjjcron_teacher_observations', JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch(`/api/teacher-observations/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
   };
 
   // Config

@@ -242,66 +242,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // If STILL not found anywhere, auto-create student profile & user profile so login always works!
+    // If not found in students, check bjjcron_teachers dynamically
     if (!found) {
-      const emailPrefix = cleanEmail.split('@')[0];
-      const autoName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
-      const newStudentId = `std-auto-${Date.now()}`;
-      const newUserId = `user-auto-${Date.now()}`;
+      const savedTeachers = localStorage.getItem('bjjcron_teachers');
+      if (savedTeachers) {
+        try {
+          const teachersList = JSON.parse(savedTeachers);
+          const teacherObj = teachersList.find((t: any) => t.email && t.email.trim().toLowerCase() === cleanEmail);
+          if (teacherObj) {
+            const newUser: User = {
+              id: `user-${teacherObj.id}`,
+              name: teacherObj.name,
+              email: cleanEmail,
+              role: 'PROFESSOR',
+              phone: teacherObj.phone || '',
+              password: password || teacherObj.password || '123',
+              approvalStatus: 'APPROVED',
+              isActivated: true,
+              avatarUrl: (teacherObj.avatarUrl && !teacherObj.avatarUrl.includes('unsplash.com')) ? teacherObj.avatarUrl : DEFAULT_BLACK_GI_AVATAR
+            };
+            found = newUser;
+            currentUsers.push(newUser);
+            setUsers(currentUsers);
+            localStorage.setItem('bjjcron_users', JSON.stringify(currentUsers));
+          }
+        } catch (e) {
+          console.error('Error finding teacher in localStorage:', e);
+        }
+      }
+    }
 
-      const newStudentObj = {
-        id: newStudentId,
-        registrationNumber: `BJJ-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        name: autoName,
-        email: cleanEmail,
-        phone: '',
-        birthDate: '2000-01-01',
-        photoUrl: DEFAULT_BLACK_GI_AVATAR,
-        belt: 'BRANCA' as BeltType,
-        stripes: 0,
-        startDate: new Date().toISOString().split('T')[0],
-        totalClassesAttended: 0,
-        classesSinceLastGraduation: 0,
-        weightCategory: 'MÉDIO',
-        ageCategory: 'ADULTO',
-        active: true,
-        planName: 'Plano Mensal Padrão',
-        planPrice: 240,
-        paymentDueDateDay: 10,
-        paymentStatus: 'PENDENTE',
-        qrCodeToken: `BJJCRON-${newStudentId}`,
-        approvalStatus: 'PENDING',
-        hasActivatedAccount: true,
-        password: password || '123'
+    // Do not allow automatic creation of users when clicking Entrar; user must be registered first
+    if (!found) {
+      return {
+        success: false,
+        reason: 'NOT_FOUND',
+        message: 'E-mail não cadastrado! Por favor, realize o seu cadastro antes de entrar no sistema.'
       };
+    }
 
-      try {
-        const savedStudents = localStorage.getItem('bjjcron_students');
-        const studentsList = savedStudents ? JSON.parse(savedStudents) : [];
-        studentsList.unshift(newStudentObj);
-        localStorage.setItem('bjjcron_students', JSON.stringify(studentsList));
-      } catch (e) {}
-
-      found = {
-        id: newUserId,
-        name: autoName,
-        email: cleanEmail,
-        role: 'ALUNO',
-        studentId: newStudentId,
-        phone: '',
-        password: password || '123',
-        approvalStatus: 'PENDING',
-        isActivated: true,
-        avatarUrl: newStudentObj.photoUrl
+    if (password && found.password && found.password !== password) {
+      return {
+        success: false,
+        reason: 'WRONG_PASSWORD',
+        message: 'Senha incorreta. Verifique sua senha e tente novamente.'
       };
-
-      currentUsers.push(found);
-      setUsers(currentUsers);
-      localStorage.setItem('bjjcron_users', JSON.stringify(currentUsers));
     }
 
     found.isActivated = true;
-    if (password) {
+    if (password && !found.password) {
       found.password = password;
     }
 
@@ -367,61 +356,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // If STILL not found in students or users, auto-create student and user record so student is NEVER blocked!
+    // If not found in students, check bjjcron_teachers dynamically
     if (userIndex === -1) {
-      const emailPrefix = cleanEmail.split('@')[0];
-      const autoName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
-      const newStudentId = `std-auto-${Date.now()}`;
-      const newUserId = `user-auto-${Date.now()}`;
+      const savedTeachers = localStorage.getItem('bjjcron_teachers');
+      if (savedTeachers) {
+        try {
+          const teachersList = JSON.parse(savedTeachers);
+          const teacherObj = teachersList.find((t: any) => t.email && t.email.trim().toLowerCase() === cleanEmail);
+          if (teacherObj) {
+            const newUser: User = {
+              id: `user-${teacherObj.id}`,
+              name: teacherObj.name,
+              email: cleanEmail,
+              role: 'PROFESSOR',
+              phone: teacherObj.phone || '',
+              password: newPassword || teacherObj.password || '123',
+              approvalStatus: 'APPROVED',
+              isActivated: true,
+              avatarUrl: (teacherObj.avatarUrl && !teacherObj.avatarUrl.includes('unsplash.com')) ? teacherObj.avatarUrl : DEFAULT_BLACK_GI_AVATAR
+            };
+            currentUsers.push(newUser);
+            userIndex = currentUsers.length - 1;
+          }
+        } catch (e) {
+          console.error('Error finding teacher for first access:', e);
+        }
+      }
+    }
 
-      const newStudentObj = {
-        id: newStudentId,
-        registrationNumber: `BJJ-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        name: autoName,
-        email: cleanEmail,
-        phone: '',
-        birthDate: '2000-01-01',
-        photoUrl: DEFAULT_BLACK_GI_AVATAR,
-        belt: 'BRANCA' as BeltType,
-        stripes: 0,
-        startDate: new Date().toISOString().split('T')[0],
-        totalClassesAttended: 0,
-        classesSinceLastGraduation: 0,
-        weightCategory: 'MÉDIO',
-        ageCategory: 'ADULTO',
-        active: true,
-        planName: 'Plano Mensal Padrão',
-        planPrice: 240,
-        paymentDueDateDay: 10,
-        paymentStatus: 'PENDENTE',
-        qrCodeToken: `BJJCRON-${newStudentId}`,
-        approvalStatus: 'APPROVED',
-        hasActivatedAccount: true,
-        password: newPassword || '123'
+    // Do not allow auto-creation of accounts; user must be registered beforehand
+    if (userIndex === -1) {
+      return {
+        success: false,
+        message: 'E-mail não cadastrado no sistema! Por favor, realize o seu cadastro antes de acessar sua conta.'
       };
-
-      try {
-        const savedStudents = localStorage.getItem('bjjcron_students');
-        const studentsList = savedStudents ? JSON.parse(savedStudents) : [];
-        studentsList.unshift(newStudentObj);
-        localStorage.setItem('bjjcron_students', JSON.stringify(studentsList));
-      } catch (e) {}
-
-      const newUser: User = {
-        id: newUserId,
-        name: autoName,
-        email: cleanEmail,
-        role: 'ALUNO',
-        studentId: newStudentId,
-        phone: '',
-        password: newPassword || '123',
-        approvalStatus: 'APPROVED',
-        isActivated: true,
-        avatarUrl: newStudentObj.photoUrl
-      };
-
-      currentUsers.push(newUser);
-      userIndex = currentUsers.length - 1;
     }
 
     const targetUser = currentUsers[userIndex];
@@ -812,6 +780,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
         localStorage.setItem('bjjcron_teachers', JSON.stringify(remainingTeachers));
       } catch (e) {}
+    }
+
+    fetch(`/api/users/${encodeURIComponent(currentUser.id)}`, { method: 'DELETE' }).catch(() => {});
+    if (currentUser.studentId) {
+      fetch(`/api/students/${encodeURIComponent(currentUser.studentId)}`, { method: 'DELETE' }).catch(() => {});
+      fetch(`/api/teachers/${encodeURIComponent(currentUser.studentId)}`, { method: 'DELETE' }).catch(() => {});
     }
 
     // 4. Logout current user
