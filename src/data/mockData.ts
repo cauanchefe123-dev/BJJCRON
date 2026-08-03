@@ -48,6 +48,17 @@ export const INITIAL_TEACHERS: Teacher[] = [
 
 export const INITIAL_USERS: User[] = [
   {
+    id: 'user-admin-cauan',
+    name: 'Cauan (Responsável)',
+    email: 'cauanchefe123@gmail.com',
+    role: 'ADMIN',
+    avatarUrl: DEFAULT_BLACK_GI_AVATAR,
+    phone: '(11) 99999-9999',
+    password: '123',
+    approvalStatus: 'APPROVED',
+    isActivated: true
+  },
+  {
     id: 'user-admin',
     name: 'Mestre Carlos Gracie Jr.',
     email: 'admin@bjjcron.com',

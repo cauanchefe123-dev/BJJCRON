@@ -17,7 +17,9 @@ import {
   User,
   ArrowRight,
   GraduationCap,
-  Crown
+  Crown,
+  Settings,
+  Send
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -33,10 +35,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     registerTeacherSelfService,
     registerAdminSelfService,
     deleteMyAccount,
+    requestPasswordRecovery,
+    resetPasswordWithCode,
     currentUser
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'REGISTER' | 'LOGIN' | 'FIRST_ACCESS'>('REGISTER');
+  const [activeTab, setActiveTab] = useState<'REGISTER' | 'LOGIN' | 'FIRST_ACCESS' | 'RECOVER'>('REGISTER');
   const [selectedRole, setSelectedRole] = useState<'ALUNO' | 'PROFESSOR' | 'ADMIN'>('ALUNO');
   const availableAcademies = getStoredAcademiesList();
 
@@ -46,6 +50,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const [firstAccessEmail, setFirstAccessEmail] = useState('');
   const [firstAccessPassword, setFirstAccessPassword] = useState('');
+
+  // Password Recovery State
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryStep, setRecoveryStep] = useState<'EMAIL' | 'CODE'>('EMAIL');
+  const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
+  const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState<string | null>(null);
+  const [recoveryNewPassword, setRecoveryNewPassword] = useState('');
+  const [simulatedEmailPopup, setSimulatedEmailPopup] = useState<{ email: string; code: string } | null>(null);
+
+  // SMTP Configuration State (optional Gmail App Password setup)
+  const [showSmtpConfig, setShowSmtpConfig] = useState(false);
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPass, setSmtpPass] = useState('');
+  const [smtpHost, setSmtpHost] = useState('smtp.gmail.com');
+  const [smtpConfigSaved, setSmtpConfigSaved] = useState(false);
 
   // Register Aluno State
   const [studentReg, setStudentReg] = useState({
@@ -120,6 +139,68 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       }, 1200);
     } else {
       setFeedback({ type: 'error', message: res.message });
+    }
+  };
+
+  const handleRecoveryEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+    if (!recoveryEmail) return;
+    const res = requestPasswordRecovery(recoveryEmail);
+    if (res.success) {
+      setGeneratedRecoveryCode(res.code || '');
+      setSimulatedEmailPopup({ email: recoveryEmail, code: res.code || '' });
+      setRecoveryStep('CODE');
+      setFeedback({ type: 'success', message: res.message });
+    } else {
+      setFeedback({ type: 'error', message: res.message });
+    }
+  };
+
+  const handleRecoveryCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+    const res = resetPasswordWithCode(
+      recoveryEmail,
+      recoveryCodeInput,
+      generatedRecoveryCode || '',
+      recoveryNewPassword
+    );
+    if (res.success) {
+      setFeedback({ type: 'success', message: res.message });
+      setActiveTab('LOGIN');
+      setLoginEmail(recoveryEmail);
+      setLoginPassword(recoveryNewPassword);
+      setSimulatedEmailPopup(null);
+    } else {
+      setFeedback({ type: 'error', message: res.message });
+    }
+  };
+
+  const handleSaveSmtpConfig = async () => {
+    try {
+      const res = await fetch('/api/config/smtp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: smtpHost || 'smtp.gmail.com',
+          port: 587,
+          user: smtpUser,
+          pass: smtpPass,
+          fromName: 'BJJCRON Jiu-Jitsu'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSmtpConfigSaved(true);
+        setFeedback({
+          type: 'success',
+          message: `Servidor SMTP configurado! O sistema agora enviará e-mails reais usando: ${smtpUser}`
+        });
+        setTimeout(() => setShowSmtpConfig(false), 1500);
+      }
+    } catch (err) {
+      setFeedback({ type: 'error', message: 'Erro ao configurar servidor SMTP' });
     }
   };
 
@@ -704,7 +785,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </div>
 
             <div>
-              <label className="text-slate-300 font-bold block mb-1">Senha de Acesso</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-slate-300 font-bold block">Senha de Acesso</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('RECOVER');
+                    setRecoveryStep('EMAIL');
+                    setRecoveryEmail(loginEmail);
+                    setFeedback(null);
+                  }}
+                  className="text-amber-400 hover:text-amber-300 font-semibold underline text-[11px] transition-colors"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -777,6 +872,207 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               Ativar Minha Conta & Entrar
             </button>
           </form>
+        )}
+
+        {/* TAB 4: PASSWORD RECOVERY */}
+        {activeTab === 'RECOVER' && (
+          <div className="space-y-4 text-xs">
+            {recoveryStep === 'EMAIL' ? (
+              <form onSubmit={handleRecoveryEmailSubmit} className="space-y-4">
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-xs">
+                    <KeyRound className="w-4 h-4 text-amber-400" />
+                    Recuperação de Senha por E-mail
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    Digite o e-mail cadastrado na sua conta. Vamos enviar um código de segurança de 6 dígitos para redefinir sua senha.
+                  </p>
+                </div>
+
+                {/* CONFIGURADOR SMTP OPCIONAL PARA ENVIO GMAIL REAL */}
+                <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/60">
+                  <button
+                    type="button"
+                    onClick={() => setShowSmtpConfig(!showSmtpConfig)}
+                    className="w-full px-3.5 py-2.5 flex items-center justify-between text-slate-300 hover:text-white hover:bg-slate-800/50 transition-colors text-xs font-semibold"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Settings className="w-3.5 h-3.5 text-amber-400" />
+                      Configurar E-mail Remetente (Seu Gmail/SMTP)
+                    </span>
+                    <span className="text-[10px] text-amber-400/90 underline font-normal">
+                      {showSmtpConfig ? 'Ocultar' : 'Configurar'}
+                    </span>
+                  </button>
+                  {showSmtpConfig && (
+                    <div className="p-3.5 border-t border-slate-800 space-y-3 bg-slate-950/80">
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Para enviar as mensagens de recuperação direto pela sua conta do Gmail para a caixa dos seus alunos, digite seu e-mail e a <strong>Senha de App (16 letras)</strong> gerada no Google:
+                      </p>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Seu E-mail Gmail Remetente</label>
+                        <input
+                          type="email"
+                          placeholder="exemplo.academia@gmail.com"
+                          value={smtpUser}
+                          onChange={e => setSmtpUser(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-slate-100 text-xs focus:ring-1 focus:ring-amber-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">Senha de App Google (16 caracteres)</label>
+                        <input
+                          type="password"
+                          placeholder="xxxx xxxx xxxx xxxx"
+                          value={smtpPass}
+                          onChange={e => setSmtpPass(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-slate-100 text-xs focus:ring-1 focus:ring-amber-500 outline-none font-mono"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveSmtpConfig}
+                        className="w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        Salvar e Ativar Envio Real pelo seu Gmail
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Seu E-mail Cadastrado *</label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="seu.email@exemplo.com"
+                      value={recoveryEmail}
+                      onChange={e => setRecoveryEmail(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    type="submit"
+                    className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    Enviar Código por E-mail
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('LOGIN');
+                      setFeedback(null);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-bold text-xs transition-all text-center"
+                  >
+                    Voltar para o Login
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleRecoveryCodeSubmit} className="space-y-4">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-200 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    Código Enviado para o seu E-mail
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    Enviamos um código de 6 dígitos para <strong>{recoveryEmail}</strong>. Digite o código abaixo para criar sua nova senha.
+                  </p>
+                </div>
+
+                {simulatedEmailPopup && (
+                  <div className="p-3.5 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-emerald-200 text-xs space-y-1.5 shadow-lg">
+                    <div className="flex items-center justify-between font-bold text-emerald-300">
+                      <span className="flex items-center gap-1.5">
+                        <Mail className="w-4 h-4 text-emerald-400" />
+                        📧 E-mail Enviado (Simulador de Inbox)
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        Agora
+                      </span>
+                    </div>
+                    <p className="text-slate-200 text-[11px]">
+                      Para: <strong className="text-white">{simulatedEmailPopup.email}</strong>
+                    </p>
+                    <div className="bg-slate-950 p-2.5 rounded-lg border border-emerald-500/30 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase font-extrabold">Seu código de recuperação:</p>
+                        <p className="text-lg font-black text-amber-400 tracking-widest">{simulatedEmailPopup.code}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setRecoveryCodeInput(simulatedEmailPopup.code)}
+                        className="px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold transition-all"
+                      >
+                        Preencher Código
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Código de Segurança (6 dígitos) *</label>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      placeholder="000000"
+                      value={recoveryCodeInput}
+                      onChange={e => setRecoveryCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-slate-100 font-mono text-center tracking-widest text-base font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Nova Senha *</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="password"
+                      required
+                      minLength={3}
+                      placeholder="Digite sua nova senha"
+                      value={recoveryNewPassword}
+                      onChange={e => setRecoveryNewPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    type="submit"
+                    className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    Redefinir Senha & Entrar
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecoveryStep('EMAIL');
+                      setRecoveryCodeInput('');
+                      setRecoveryNewPassword('');
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-bold text-xs transition-all text-center"
+                  >
+                    Voltar / Informar outro e-mail
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -48,6 +48,8 @@ interface AuthContextType {
   logout: () => void;
   deleteMyAccount: () => { success: boolean; message: string };
   refreshUsersFromStorage: () => void;
+  requestPasswordRecovery: (email: string) => { success: boolean; code?: string; message: string };
+  resetPasswordWithCode: (email: string, code: string, expectedCode: string, newPassword: string) => { success: boolean; message: string };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,6 +58,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const getSyncedInitialUsers = (): User[] => {
   const savedUsers = localStorage.getItem('bjjcron_users');
   let baseUsers: User[] = savedUsers ? JSON.parse(savedUsers) : INITIAL_USERS;
+
+  // Ensure all INITIAL_USERS (including admin cauanchefe123@gmail.com) are always present
+  INITIAL_USERS.forEach(initU => {
+    if (!baseUsers.some(u => u.email.trim().toLowerCase() === initU.email.trim().toLowerCase() || u.id === initU.id)) {
+      baseUsers.push(initU);
+    }
+  });
 
   // Replace unsplash avatars with DEFAULT_BLACK_GI_AVATAR
   baseUsers = baseUsers.map(u => ({
@@ -197,6 +206,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     let currentUsers = [...users];
+    INITIAL_USERS.forEach(initU => {
+      if (!currentUsers.some(u => u.email.trim().toLowerCase() === initU.email.trim().toLowerCase() || u.id === initU.id)) {
+        currentUsers.push(initU);
+      }
+    });
     const savedUsers = localStorage.getItem('bjjcron_users');
     if (savedUsers) {
       try {
@@ -801,6 +815,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
+  const requestPasswordRecovery = (email: string): { success: boolean; code?: string; message: string } => {
+    const cleanEmail = email.trim().toLowerCase();
+    const foundUser = users.find(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (!foundUser) {
+      return {
+        success: false,
+        message: 'E-mail não encontrado em nosso sistema. Verifique se o endereço foi digitado corretamente.'
+      };
+    }
+    const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log(`=========================================`);
+    console.log(`📧 [E-MAIL DE RECUPERAÇÃO BJJCRON]`);
+    console.log(`Para: ${foundUser.email} (${foundUser.name})`);
+    console.log(`Assunto: Seu código de recuperação de senha`);
+    console.log(`Código de segurança: ${generatedCode}`);
+    console.log(`=========================================`);
+
+    fetch('/api/auth/recover-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: foundUser.email, code: generatedCode, name: foundUser.name })
+    }).catch(() => {});
+
+    return {
+      success: true,
+      code: generatedCode,
+      message: `Enviamos um código de verificação de 6 dígitos para o e-mail: ${foundUser.email}`
+    };
+  };
+
+  const resetPasswordWithCode = (
+    email: string,
+    code: string,
+    expectedCode: string,
+    newPassword: string
+  ): { success: boolean; message: string } => {
+    if (!code || code.trim() !== expectedCode.trim()) {
+      return {
+        success: false,
+        message: 'Código de segurança incorreto. Verifique os números enviados no e-mail.'
+      };
+    }
+    if (!newPassword || newPassword.trim().length < 3) {
+      return {
+        success: false,
+        message: 'A nova senha deve possuir pelo menos 3 caracteres.'
+      };
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const updatedUsers = users.map(u => {
+      if (u.email.trim().toLowerCase() === cleanEmail) {
+        return {
+          ...u,
+          password: newPassword,
+          isActivated: true
+        };
+      }
+      return u;
+    });
+
+    setUsers(updatedUsers);
+    localStorage.setItem('bjjcron_users', JSON.stringify(updatedUsers));
+
+    const targetUser = updatedUsers.find(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (targetUser) {
+      fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(targetUser)
+      }).catch(() => {});
+    }
+
+    return {
+      success: true,
+      message: 'Sua senha foi redefinida com sucesso! Você já pode entrar usando sua nova senha.'
+    };
+  };
+
   return (
     <AuthContext.Provider value={{
       currentUser,
@@ -816,7 +909,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       switchUser,
       logout,
       deleteMyAccount,
-      refreshUsersFromStorage
+      refreshUsersFromStorage,
+      requestPasswordRecovery,
+      resetPasswordWithCode
     }}>
       {children}
     </AuthContext.Provider>
