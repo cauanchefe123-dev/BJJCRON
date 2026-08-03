@@ -70,7 +70,10 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({ isOpen, onClos
       return;
     }
 
-    addStudent(formData);
+    addStudent({
+      ...formData,
+      approvalStatus: 'APPROVED',
+    });
     resetForm();
     onClose();
   };

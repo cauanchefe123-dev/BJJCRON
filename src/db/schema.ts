@@ -26,6 +26,8 @@ export const users = pgTable('users', {
   studentId: text('student_id'),
   phone: text('phone'),
   approvalStatus: text('approval_status').default('APPROVED'), // 'APPROVED' | 'PENDING' | 'REJECTED'
+  password: text('password').default('123'),
+  isActivated: boolean('is_activated').default(true),
   academyId: integer('academy_id').references(() => academies.id),
   createdAt: timestamp('created_at').defaultNow(),
 });

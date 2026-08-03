@@ -3,7 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db } from './src/db/index.ts';
 import * as schema from './src/db/schema.ts';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, or } from 'drizzle-orm';
 import {
   INITIAL_STUDENTS,
   INITIAL_TEACHERS,
@@ -14,6 +14,7 @@ import {
   INITIAL_TRAINING_LOGS,
   INITIAL_TEACHER_OBSERVATIONS,
   INITIAL_ACADEMY_CONFIG,
+  INITIAL_USERS,
 } from './src/data/mockData.ts';
 
 const PORT = 3000;
@@ -144,6 +145,96 @@ async function startServer() {
   });
 
   // ==========================================
+  // USERS ENDPOINTS
+  // ==========================================
+  app.get('/api/users', async (req, res) => {
+    try {
+      const all = await db.select().from(schema.users).orderBy(desc(schema.users.id));
+      if (all.length === 0) {
+        for (const u of INITIAL_USERS) {
+          await db.insert(schema.users).values({
+            uid: `uid-${u.id}-${Date.now()}`,
+            name: u.name,
+            email: u.email,
+            role: u.role || 'ALUNO',
+            avatarUrl: u.avatarUrl || '',
+            studentId: u.studentId ? String(u.studentId) : null,
+            phone: u.phone || '',
+            approvalStatus: u.approvalStatus || 'APPROVED',
+            password: u.password || '123',
+            isActivated: u.isActivated ?? true,
+          }).onConflictDoNothing();
+        }
+        const seeded = await db.select().from(schema.users).orderBy(desc(schema.users.id));
+        return res.json(seeded.map(formatUserFromDb));
+      }
+      res.json(all.map(formatUserFromDb));
+    } catch (err: any) {
+      console.error('Error fetching users:', err?.message);
+      res.status(500).json({ error: 'Failed to fetch users from database' });
+    }
+  });
+
+  app.post('/api/users', async (req, res) => {
+    try {
+      const u = req.body;
+      const [inserted] = await db.insert(schema.users).values({
+        uid: u.uid || `u-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        name: u.name,
+        email: u.email,
+        role: u.role || 'ALUNO',
+        avatarUrl: u.avatarUrl || '',
+        studentId: u.studentId ? String(u.studentId) : null,
+        phone: u.phone || '',
+        approvalStatus: u.approvalStatus || 'APPROVED',
+        password: u.password || '123',
+        isActivated: u.isActivated ?? true,
+      }).returning();
+      res.status(201).json(formatUserFromDb(inserted));
+    } catch (err: any) {
+      console.error('Error creating user:', err?.message);
+      res.status(500).json({ error: 'Failed to create user in database' });
+    }
+  });
+
+  app.put('/api/users/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const u = req.body;
+      const [updated] = await db.update(schema.users)
+        .set({
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          avatarUrl: u.avatarUrl,
+          studentId: u.studentId ? String(u.studentId) : null,
+          phone: u.phone,
+          approvalStatus: u.approvalStatus,
+          password: u.password,
+          isActivated: u.isActivated,
+        })
+        .where(eq(schema.users.id, id))
+        .returning();
+      if (!updated) return res.status(404).json({ error: 'User not found' });
+      res.json(formatUserFromDb(updated));
+    } catch (err: any) {
+      console.error('Error updating user:', err?.message);
+      res.status(500).json({ error: 'Failed to update user in database' });
+    }
+  });
+
+  app.delete('/api/users/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      await db.delete(schema.users).where(eq(schema.users.id, id));
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('Error deleting user:', err?.message);
+      res.status(500).json({ error: 'Failed to delete user from database' });
+    }
+  });
+
+  // ==========================================
   // STUDENTS ENDPOINTS
   // ==========================================
   app.get('/api/students', async (req, res) => {
@@ -176,6 +267,7 @@ async function startServer() {
             paymentStatus: s.paymentStatus,
             lastPaymentDate: s.lastPaymentDate,
             qrCodeToken: s.qrCodeToken,
+            approvalStatus: s.approvalStatus || 'APPROVED',
           }).onConflictDoNothing();
         }
         const seeded = await db.select().from(schema.students).orderBy(desc(schema.students.id));
@@ -215,6 +307,7 @@ async function startServer() {
         paymentStatus: s.paymentStatus || 'PAGO',
         lastPaymentDate: s.lastPaymentDate || '',
         qrCodeToken: s.qrCodeToken || `token-${Date.now()}`,
+        approvalStatus: s.approvalStatus || 'PENDING',
       }).returning();
       res.json(formatStudentFromDb(inserted));
     } catch (err: any) {
@@ -250,12 +343,20 @@ async function startServer() {
       if (updates.paymentDueDateDay !== undefined) dbUpdates.paymentDueDateDay = updates.paymentDueDateDay;
       if (updates.paymentStatus !== undefined) dbUpdates.paymentStatus = updates.paymentStatus;
       if (updates.lastPaymentDate !== undefined) dbUpdates.lastPaymentDate = updates.lastPaymentDate;
+      if (updates.approvalStatus !== undefined) dbUpdates.approvalStatus = updates.approvalStatus;
 
-      if (!isNaN(idNum)) {
-        await db.update(schema.students).set(dbUpdates).where(eq(schema.students.id, idNum));
-      } else {
-        await db.update(schema.students).set(dbUpdates).where(eq(schema.students.registrationNumber, idStr));
-      }
+      const cleanIdStr = idStr.trim();
+      const condition = !isNaN(idNum)
+        ? or(
+            eq(schema.students.id, idNum),
+            eq(schema.students.registrationNumber, cleanIdStr),
+            eq(schema.students.email, cleanIdStr.toLowerCase())
+          )
+        : or(
+            eq(schema.students.registrationNumber, cleanIdStr),
+            eq(schema.students.email, cleanIdStr.toLowerCase())
+          );
+      await db.update(schema.students).set(dbUpdates).where(condition);
       res.json({ success: true });
     } catch (err: any) {
       console.error('Error updating student:', err?.message);
@@ -267,11 +368,18 @@ async function startServer() {
     try {
       const idStr = req.params.id;
       const idNum = parseInt(idStr, 10);
-      if (!isNaN(idNum)) {
-        await db.delete(schema.students).where(eq(schema.students.id, idNum));
-      } else {
-        await db.delete(schema.students).where(eq(schema.students.registrationNumber, idStr));
-      }
+      const cleanIdStr = idStr.trim();
+      const condition = !isNaN(idNum)
+        ? or(
+            eq(schema.students.id, idNum),
+            eq(schema.students.registrationNumber, cleanIdStr),
+            eq(schema.students.email, cleanIdStr.toLowerCase())
+          )
+        : or(
+            eq(schema.students.registrationNumber, cleanIdStr),
+            eq(schema.students.email, cleanIdStr.toLowerCase())
+          );
+      await db.delete(schema.students).where(condition);
       res.json({ success: true });
     } catch (err: any) {
       console.error('Error deleting student:', err?.message);
@@ -713,8 +821,23 @@ async function startServer() {
       await db.delete(schema.classes);
       await db.delete(schema.students);
       await db.delete(schema.teachers);
+      await db.delete(schema.users);
 
       // Re-seed all tables
+      for (const u of INITIAL_USERS) {
+        await db.insert(schema.users).values({
+          uid: `uid-${u.id}-${Date.now()}`,
+          name: u.name,
+          email: u.email,
+          role: u.role || 'ALUNO',
+          avatarUrl: u.avatarUrl || '',
+          studentId: u.studentId ? String(u.studentId) : null,
+          phone: u.phone || '',
+          approvalStatus: u.approvalStatus || 'APPROVED',
+          password: u.password || '123',
+          isActivated: u.isActivated ?? true,
+        }).onConflictDoNothing();
+      }
       for (const s of INITIAL_STUDENTS) {
         await db.insert(schema.students).values({
           registrationNumber: s.registrationNumber,
@@ -728,6 +851,7 @@ async function startServer() {
           planName: s.planName, planPrice: s.planPrice,
           paymentDueDateDay: s.paymentDueDateDay, paymentStatus: s.paymentStatus,
           lastPaymentDate: s.lastPaymentDate, qrCodeToken: s.qrCodeToken,
+          approvalStatus: s.approvalStatus || 'APPROVED',
         }).onConflictDoNothing();
       }
       for (const t of INITIAL_TEACHERS) {
@@ -778,6 +902,7 @@ async function startServer() {
       await db.delete(schema.classes);
       await db.delete(schema.students);
       await db.delete(schema.teachers);
+      await db.delete(schema.users);
       res.json({ success: true, message: 'All tables emptied (Zero tests/robots)' });
     } catch (err: any) {
       console.error('Error in /api/clear-all-data:', err?.message);
@@ -832,6 +957,7 @@ function formatStudentFromDb(row: any) {
     paymentStatus: row.paymentStatus || 'PAGO',
     lastPaymentDate: row.lastPaymentDate || '',
     qrCodeToken: row.qrCodeToken || '',
+    approvalStatus: row.approvalStatus || 'APPROVED',
   };
 }
 
@@ -955,6 +1081,22 @@ function formatObservationFromDb(row: any) {
     title: row.title,
     content: row.content,
     category: row.category as any,
+  };
+}
+
+function formatUserFromDb(row: any) {
+  return {
+    id: String(row.id),
+    uid: row.uid || '',
+    name: row.name || '',
+    email: row.email || '',
+    role: row.role || 'ALUNO',
+    avatarUrl: row.avatarUrl || '',
+    studentId: row.studentId ? String(row.studentId) : undefined,
+    phone: row.phone || '',
+    password: row.password || '123',
+    approvalStatus: row.approvalStatus || 'APPROVED',
+    isActivated: row.isActivated ?? true,
   };
 }
 

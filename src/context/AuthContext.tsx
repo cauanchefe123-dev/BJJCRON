@@ -116,12 +116,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
+  const fetchUsersFromApi = async () => {
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setUsers(prev => {
+            const isDiff = JSON.stringify(prev) !== JSON.stringify(data);
+            return isDiff ? data : prev;
+          });
+          localStorage.setItem('bjjcron_users', JSON.stringify(data));
+        }
+      }
+    } catch (e) {
+      // Offline fallback
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem('bjjcron_users', JSON.stringify(users));
   }, [users]);
 
   useEffect(() => {
+    fetchUsersFromApi();
+    const timer = setInterval(fetchUsersFromApi, 3000);
+
     const syncFromStorage = () => {
+      fetchUsersFromApi();
       const saved = localStorage.getItem('bjjcron_users');
       if (saved) {
         try {
@@ -133,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('bjjcron_users_updated', syncFromStorage);
     window.addEventListener('bjjcron_students_updated', syncFromStorage);
     return () => {
+      clearInterval(timer);
       window.removeEventListener('storage', syncFromStorage);
       window.removeEventListener('bjjcron_users_updated', syncFromStorage);
       window.removeEventListener('bjjcron_students_updated', syncFromStorage);
@@ -479,6 +502,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(prev => [...prev, newUser]);
     const updatedUsers = [...users, newUser];
     localStorage.setItem('bjjcron_users', JSON.stringify(updatedUsers));
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser)
+    }).then(() => {
+      window.dispatchEvent(new Event('bjjcron_users_updated'));
+    }).catch(() => {});
 
     // Create Student in bjjcron_students
     const savedStudents = localStorage.getItem('bjjcron_students');
@@ -514,6 +544,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const filteredStudents = studentsList.filter((s: any) => s.email && s.email.trim().toLowerCase() !== cleanEmail);
     filteredStudents.unshift(newStudentObj);
     localStorage.setItem('bjjcron_students', JSON.stringify(filteredStudents));
+    fetch('/api/students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newStudentObj)
+    }).catch(() => {});
 
     window.dispatchEvent(new Event('bjjcron_users_updated'));
     window.dispatchEvent(new Event('bjjcron_students_updated'));
@@ -562,6 +597,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(prev => [...prev, newUser]);
     const updatedUsers = [...users, newUser];
     localStorage.setItem('bjjcron_users', JSON.stringify(updatedUsers));
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser)
+    }).then(() => {
+      window.dispatchEvent(new Event('bjjcron_users_updated'));
+    }).catch(() => {});
 
     // Add to teachers list
     const savedTeachers = localStorage.getItem('bjjcron_teachers');
@@ -622,6 +664,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(prev => [...prev, newUser]);
     const updatedUsers = [...users, newUser];
     localStorage.setItem('bjjcron_users', JSON.stringify(updatedUsers));
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser)
+    }).then(() => {
+      window.dispatchEvent(new Event('bjjcron_users_updated'));
+    }).catch(() => {});
 
     // Save Academy Config
     if (adminData.academyName) {
@@ -669,6 +718,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
     }
+    fetch('/api/students/' + encodeURIComponent(identifier), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approvalStatus: 'APPROVED', active: true })
+    }).catch(() => {});
     window.dispatchEvent(new Event('bjjcron_users_updated'));
     window.dispatchEvent(new Event('bjjcron_students_updated'));
   };
@@ -696,6 +750,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
     }
+    fetch('/api/students/' + encodeURIComponent(identifier), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approvalStatus: 'REJECTED', active: false })
+    }).catch(() => {});
     window.dispatchEvent(new Event('bjjcron_users_updated'));
     window.dispatchEvent(new Event('bjjcron_students_updated'));
   };
