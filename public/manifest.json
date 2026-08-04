@@ -1,5 +1,5 @@
 {
-  "id": "/",
+  "id": "bjjcron-pwa-app",
   "name": "BJJCRON - Gestão de Jiu-Jitsu",
   "short_name": "BJJCRON",
   "description": "Sistema completo de gestão de academia de Jiu-Jitsu, com chamada por QR Code, ranking, financeiro e controle de graduação.",
@@ -8,7 +8,7 @@
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "orientation": "any",
+  "orientation": "portrait-primary",
   "categories": [
     "sports",
     "fitness",
@@ -16,19 +16,45 @@
   ],
   "icons": [
     {
-      "src": "/icon-512.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ],
   "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Painel de Controle BJJCRON Desktop"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Aplicativo Mobile BJJCRON"
+    },
     {
       "src": "/screenshot-desktop.svg",
       "sizes": "1280x720",
@@ -52,8 +78,9 @@
       "url": "/",
       "icons": [
         {
-          "src": "/icon-512.svg",
-          "sizes": "512x512"
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -64,8 +91,9 @@
       "url": "/",
       "icons": [
         {
-          "src": "/icon-512.svg",
-          "sizes": "512x512"
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }

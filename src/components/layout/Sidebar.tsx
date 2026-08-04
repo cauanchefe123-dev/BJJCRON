@@ -83,17 +83,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-4 flex-1 overflow-y-auto">
           {/* Logo Brand */}
           <div className="flex items-center gap-3 px-2 py-3 mb-6 border-b border-slate-800">
-            {academyConfig.logoUrl ? (
-              <img
-                src={academyConfig.logoUrl}
-                alt={academyConfig.fantasyName || academyConfig.name}
-                className="w-10 h-10 rounded-xl object-cover border border-amber-500/50 shadow-md bg-slate-950 p-0.5"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center font-black text-slate-950 text-xl shadow-md">
-                BJJ
-              </div>
-            )}
+            <img
+              src={academyConfig.logoUrl || '/logo.svg'}
+              alt={academyConfig.fantasyName || academyConfig.name || 'BJJCRON'}
+              className="w-10 h-10 rounded-xl object-contain border border-amber-500/50 shadow-md bg-slate-950 p-0.5"
+            />
             <div className="min-w-0 flex-1">
               <h1 className="font-black text-sm tracking-wider text-white truncate">
                 {academyConfig.fantasyName || 'BJJCRON'}

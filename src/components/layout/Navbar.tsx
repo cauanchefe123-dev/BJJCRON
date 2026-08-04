@@ -49,13 +49,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           <Menu className="w-5 h-5" />
         </button>
 
-        <div>
-          <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-            {tabTitles[activeTab] || 'BJJCRON'}
-          </h2>
-          <p className="text-[11px] text-slate-400 hidden sm:block">
-            {academyConfig.fantasyName || academyConfig.name}
-          </p>
+        <div className="flex items-center gap-2.5">
+          <img
+            src={academyConfig.logoUrl || '/logo.svg'}
+            alt="BJJCRON Logo"
+            className="w-8 h-8 rounded-lg object-contain bg-slate-950 p-0.5 border border-slate-700/80 shadow-xs"
+          />
+          <div>
+            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              {tabTitles[activeTab] || 'BJJCRON'}
+            </h2>
+            <p className="text-[11px] text-slate-400 hidden sm:block">
+              {academyConfig.fantasyName || academyConfig.name}
+            </p>
+          </div>
         </div>
       </div>
 
