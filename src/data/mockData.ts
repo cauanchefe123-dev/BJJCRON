@@ -262,6 +262,7 @@ export const INITIAL_STUDENTS: Student[] = [
     belt: 'AZUL',
     stripes: 2,
     startDate: '2024-02-15',
+    initialMonthsTrained: 8,
     totalClassesAttended: 124,
     classesSinceLastGraduation: 34,
     weightCategory: 'MÉDIO',

@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { BeltBadge } from '../belts/BeltBadge';
 import { Student, BeltType } from '../../types';
 import { DEFAULT_BLACK_GI_AVATAR, getStudentAvatar } from '../../constants/avatar';
-import { Search, UserPlus, Award, Filter, ShieldCheck, MoreVertical, Trash2, Edit3, Phone, Mail, IdCard, UserCheck, Check, X, AlertCircle } from 'lucide-react';
+import { getTrainingTimeText } from '../../utils/trainingTime';
+import { Search, UserPlus, Award, Filter, ShieldCheck, MoreVertical, Trash2, Edit3, Phone, Mail, IdCard, UserCheck, Check, X, AlertCircle, Clock } from 'lucide-react';
 
 interface StudentListProps {
   onOpenAddModal: () => void;
@@ -204,8 +205,8 @@ export const StudentList: React.FC<StudentListProps> = ({
                 <th className="py-3.5 px-4">Atleta</th>
                 <th className="py-3.5 px-4">Matrícula</th>
                 <th className="py-3.5 px-4">Faixa & Graus</th>
-                <th className="py-3.5 px-4">Treinos Total</th>
-                <th className="py-3.5 px-4">Mensalidade</th>
+                <th className="py-3.5 px-4">Tempo de Treino</th>
+                <th className="py-3.5 px-4">Aulas Presenciais</th>
                 <th className="py-3.5 px-4 text-right">Ações</th>
               </tr>
             </thead>
@@ -239,20 +240,17 @@ export const StudentList: React.FC<StudentListProps> = ({
                       <BeltBadge belt={s.belt} stripes={s.stripes} size="sm" />
                     </td>
 
+                    <td className="py-3.5 px-4">
+                      <span className="font-extrabold text-amber-300 text-xs bg-amber-500/10 border border-amber-500/30 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1.5 shadow-xs">
+                        <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        {getTrainingTimeText(s.startDate, s.initialMonthsTrained)}
+                      </span>
+                    </td>
+
                     <td className="py-3.5 px-4 font-bold text-slate-200">
                       <span>{s.totalClassesAttended} treinos</span>
                       <span className="block text-[10px] text-emerald-400">
                         {s.classesSinceLastGraduation} pós-grau
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        s.paymentStatus === 'PAGO' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                        s.paymentStatus === 'PENDENTE' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                        'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                      }`}>
-                        {s.paymentStatus}
                       </span>
                     </td>
 

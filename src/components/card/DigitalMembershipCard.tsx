@@ -3,7 +3,8 @@ import { Student } from '../../types';
 import { BeltBadge } from '../belts/BeltBadge';
 import { useData } from '../../context/DataContext';
 import { DEFAULT_BLACK_GI_AVATAR, getStudentAvatar } from '../../constants/avatar';
-import { ShieldCheck, QrCode, Download, Printer, Award, Calendar, CheckCircle, Hash } from 'lucide-react';
+import { getTrainingTimeText } from '../../utils/trainingTime';
+import { ShieldCheck, QrCode, Download, Printer, Award, Calendar, CheckCircle, Hash, Clock } from 'lucide-react';
 
 interface DigitalMembershipCardProps {
   student: Student;
@@ -105,18 +106,21 @@ export const DigitalMembershipCard: React.FC<DigitalMembershipCardProps> = ({ st
                 <span className="font-mono font-bold text-amber-400 text-xs">{student.registrationNumber}</span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 block font-medium">Categoria</span>
-                <span className="font-bold text-slate-200">{student.ageCategory}</span>
+                <span className="text-[10px] text-slate-400 block font-medium">Tempo de Treino</span>
+                <span className="font-bold text-amber-300 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                  {getTrainingTimeText(student.startDate, student.initialMonthsTrained)}
+                </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 block font-medium">Início nos Treinos</span>
+                <span className="text-[10px] text-slate-400 block font-medium">Início na Academia</span>
                 <span className="font-semibold text-slate-300">
                   {new Date(student.startDate).toLocaleDateString('pt-BR')}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 block font-medium">Peso</span>
-                <span className="font-semibold text-slate-300">{student.weightCategory}</span>
+                <span className="text-[10px] text-slate-400 block font-medium">Categoria / Peso</span>
+                <span className="font-semibold text-slate-300">{student.ageCategory} • {student.weightCategory}</span>
               </div>
             </div>
           </div>

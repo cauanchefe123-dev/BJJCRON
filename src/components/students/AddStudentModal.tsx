@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
 import { BeltType, AgeCategory, WeightCategory } from '../../types';
 import { DEFAULT_BLACK_GI_AVATAR, getStudentAvatar, getGiAvatarForBelt } from '../../constants/avatar';
-import { X, UserPlus, Check, Upload } from 'lucide-react';
+import { X, UserPlus, Check, Upload, Clock } from 'lucide-react';
+import { getTrainingTimeText } from '../../utils/trainingTime';
 
 interface AddStudentModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({ isOpen, onClos
     belt: 'BRANCA' as BeltType,
     stripes: 0,
     startDate: new Date().toISOString().split('T')[0],
+    initialMonthsTrained: 0,
     weightCategory: 'MÉDIO' as WeightCategory,
     ageCategory: 'ADULTO' as AgeCategory,
     active: true,
@@ -44,6 +46,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({ isOpen, onClos
       belt: 'BRANCA' as BeltType,
       stripes: 0,
       startDate: new Date().toISOString().split('T')[0],
+      initialMonthsTrained: 0,
       weightCategory: 'MÉDIO' as WeightCategory,
       ageCategory: 'ADULTO' as AgeCategory,
       active: true,
@@ -188,6 +191,38 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({ isOpen, onClos
                 onChange={e => setFormData({ ...formData, stripes: parseInt(e.target.value) || 0 })}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
               />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-bold block mb-1">Data de Início na Academia</label>
+              <input
+                type="date"
+                value={formData.startDate}
+                onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-bold block mb-1">Tempo de Treino Prévio (Meses)</label>
+              <input
+                type="number"
+                min={0}
+                placeholder="Ex: 8 (se já treinava há 8 meses)"
+                value={formData.initialMonthsTrained || ''}
+                onChange={e => setFormData({ ...formData, initialMonthsTrained: Math.max(0, parseInt(e.target.value) || 0) })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+            </div>
+
+            <div className="sm:col-span-2 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <span className="text-slate-300 text-xs font-semibold">Contagem Total de Treino:</span>
+              </div>
+              <span className="font-bold text-amber-400 text-xs bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/40">
+                {getTrainingTimeText(formData.startDate, formData.initialMonthsTrained)}
+              </span>
             </div>
 
             <div>

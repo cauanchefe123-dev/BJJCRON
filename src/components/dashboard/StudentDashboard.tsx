@@ -4,6 +4,7 @@ import { useData } from '../../context/DataContext';
 import { BeltBadge } from '../belts/BeltBadge';
 import { getStudentAvatar, resolveStudentForUser } from '../../constants/avatar';
 import { DigitalMembershipCard } from '../card/DigitalMembershipCard';
+import { getTrainingTimeText } from '../../utils/trainingTime';
 import { Award, QrCode, CreditCard, BookOpen, Clock, Calendar, CheckCircle, AlertTriangle, ArrowRight, Flame, Sparkles, Edit3, Shield } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -71,8 +72,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
                 </span>
               </div>
               <p className="text-xs text-slate-400">Atleta da {academyConfig.name}</p>
-              <div className="mt-2">
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <BeltBadge belt={currentStudent.belt} stripes={currentStudent.stripes} size="md" />
+                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  {getTrainingTimeText(currentStudent.startDate, currentStudent.initialMonthsTrained)}
+                </span>
               </div>
             </div>
           </div>
@@ -187,7 +192,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-1">
           <span className="text-xs font-bold text-slate-400">Total de Treinos</span>
           <p className="text-3xl font-black text-amber-400">{currentStudent.totalClassesAttended}</p>
@@ -195,11 +200,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-1">
-          <span className="text-xs font-bold text-slate-400">Tempo de Tatame</span>
+          <span className="text-xs font-bold text-slate-400">Tempo Total de Treino</span>
+          <p className="text-xl font-black text-amber-300">
+            {getTrainingTimeText(currentStudent.startDate, currentStudent.initialMonthsTrained)}
+          </p>
+          <p className="text-[11px] text-slate-400">Jornada acumulada (meses/anos)</p>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-1">
+          <span className="text-xs font-bold text-slate-400">Horas de Tatame</span>
           <p className="text-3xl font-black text-blue-400">
             {Math.round((currentStudent.totalClassesAttended * 75) / 60)}h
           </p>
-          <p className="text-[11px] text-slate-400">Horas acumuladas de raspagens e rolas</p>
+          <p className="text-[11px] text-slate-400">Horas acumuladas em aula</p>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-1">

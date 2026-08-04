@@ -95,6 +95,7 @@ export interface Student {
   belt: BeltType;
   stripes: number; // 0-4
   startDate: string; // Date joined
+  initialMonthsTrained?: number; // Previous training experience in months prior to joining (e.g. 8 months)
   totalClassesAttended: number;
   classesSinceLastGraduation: number;
   weightCategory: WeightCategory;
