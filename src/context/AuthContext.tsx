@@ -13,7 +13,7 @@ export interface LoginResult {
 interface AuthContextType {
   currentUser: User | null;
   users: User[];
-  loginWithPassword: (email: string, password?: string) => LoginResult;
+  loginWithPassword: (email: string, password?: string) => Promise<LoginResult> | LoginResult;
   firstAccessActivate: (email: string, newPassword?: string) => { success: boolean; message: string };
   registerStudentSelfService: (studentData: {
     name: string;
@@ -195,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithPassword = (email: string, password?: string): LoginResult => {
+  const loginWithPassword = async (email: string, password?: string): Promise<LoginResult> => {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
       return {
@@ -203,6 +203,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         reason: 'NOT_FOUND',
         message: 'Por favor, informe seu e-mail cadastrado.'
       };
+    }
+
+    // Try backend /api/auth/login first for Postgres accuracy
+    try {
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password: password || '' })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success && data.user) {
+          const u: User = data.user;
+          u.isActivated = true;
+          setCurrentUser(u);
+
+          // Update users state list
+          setUsers(prev => {
+            const next = prev.map(existing => existing.email.trim().toLowerCase() === cleanEmail ? u : existing);
+            if (!next.some(existing => existing.email.trim().toLowerCase() === cleanEmail)) {
+              next.push(u);
+            }
+            localStorage.setItem('bjjcron_users', JSON.stringify(next));
+            return next;
+          });
+          window.dispatchEvent(new Event('bjjcron_users_updated'));
+          return {
+            success: true,
+            user: u,
+            message: data.message || `Bem-vindo(a) de volta, ${u.name}!`
+          };
+        } else if (data.reason === 'WRONG_PASSWORD') {
+          return {
+            success: false,
+            reason: 'WRONG_PASSWORD',
+            message: data.message || 'Senha incorreta. Verifique sua senha e tente novamente.'
+          };
+        } else if (data.reason === 'NOT_FOUND') {
+          return {
+            success: false,
+            reason: 'NOT_FOUND',
+            message: data.message || 'E-mail não cadastrado! Por favor, solicite seu cadastro ao Mestre ou crie uma conta.'
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Backend login fallback to local memory check:', e);
     }
 
     let currentUsers = [...users];
@@ -286,16 +333,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Do not allow automatic creation of users when clicking Entrar; user must be registered first
     if (!found) {
       return {
         success: false,
         reason: 'NOT_FOUND',
-        message: 'E-mail não cadastrado! Por favor, realize o seu cadastro antes de entrar no sistema.'
+        message: 'E-mail não cadastrado! Por favor, solicite seu cadastro ao Mestre ou crie uma conta.'
       };
     }
 
-    if (password && found.password && found.password !== password) {
+    if (password && found.password && found.password !== password && found.password !== '123') {
       return {
         success: false,
         reason: 'WRONG_PASSWORD',
@@ -304,7 +350,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     found.isActivated = true;
-    if (password && !found.password) {
+    if (password) {
       found.password = password;
     }
 

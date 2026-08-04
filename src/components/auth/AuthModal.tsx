@@ -40,7 +40,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     currentUser
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'REGISTER' | 'LOGIN' | 'FIRST_ACCESS' | 'RECOVER'>('REGISTER');
+  const [activeTab, setActiveTab] = useState<'REGISTER' | 'LOGIN' | 'FIRST_ACCESS' | 'RECOVER'>('LOGIN');
   const [selectedRole, setSelectedRole] = useState<'ALUNO' | 'PROFESSOR' | 'ADMIN'>('ALUNO');
   const availableAcademies = getStoredAcademiesList();
 
@@ -107,11 +107,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
 
-    const res = loginWithPassword(loginEmail, loginPassword);
+    const res = await loginWithPassword(loginEmail, loginPassword);
     if (res.success) {
       setFeedback({ type: 'success', message: res.message || 'Login realizado com sucesso!' });
       setTimeout(() => {

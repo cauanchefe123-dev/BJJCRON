@@ -193,6 +193,85 @@ async function startServer() {
     }
   });
 
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email) {
+        return res.status(400).json({ success: false, reason: 'NOT_FOUND', message: 'Por favor, informe seu e-mail.' });
+      }
+      const cleanEmail = String(email).trim().toLowerCase();
+
+      // 1) Find user in schema.users
+      let userList = await db.select().from(schema.users).where(eq(schema.users.email, cleanEmail));
+      let targetUser = userList[0];
+
+      // 2) If not in schema.users, check students table in Postgres!
+      if (!targetUser) {
+        const studentList = await db.select().from(schema.students);
+        const matchingStudent = studentList.find(s => s.email && s.email.trim().toLowerCase() === cleanEmail);
+        if (matchingStudent) {
+          const [created] = await db.insert(schema.users).values({
+            uid: `uid-std-${matchingStudent.id}-${Date.now()}`,
+            name: matchingStudent.name,
+            email: cleanEmail,
+            role: 'ALUNO',
+            avatarUrl: matchingStudent.photoUrl || '',
+            studentId: String(matchingStudent.id),
+            phone: matchingStudent.phone || '',
+            approvalStatus: 'APPROVED',
+            password: password || '123',
+            isActivated: true,
+          }).returning();
+          targetUser = created;
+        }
+      }
+
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          reason: 'NOT_FOUND',
+          message: 'E-mail não cadastrado! Por favor, solicite seu cadastro ao Mestre ou crie uma conta.'
+        });
+      }
+
+      const inputPass = password ? String(password).trim() : '';
+      const userPass = targetUser.password ? String(targetUser.password).trim() : '';
+
+      // Validate password if user has password configured and it's not default '123'
+      if (userPass && inputPass && userPass !== inputPass && userPass !== '123') {
+        return res.status(401).json({
+          success: false,
+          reason: 'WRONG_PASSWORD',
+          message: 'Senha incorreta. Verifique sua senha e tente novamente.'
+        });
+      }
+
+      let finalPassword = userPass || inputPass || '123';
+      if ((userPass === '123' || !userPass) && inputPass) {
+        finalPassword = inputPass;
+      }
+
+      // Ensure user is activated in DB
+      const [updatedUser] = await db.update(schema.users)
+        .set({
+          isActivated: true,
+          password: finalPassword,
+          approvalStatus: targetUser.approvalStatus || 'APPROVED'
+        })
+        .where(eq(schema.users.id, targetUser.id))
+        .returning();
+
+      return res.json({
+        success: true,
+        user: formatUserFromDb(updatedUser),
+        message: `Bem-vindo(a) de volta, ${updatedUser.name}!`
+      });
+    } catch (err: any) {
+      console.error('Error in /api/auth/login:', err?.message);
+      return res.status(500).json({ success: false, message: 'Erro no servidor ao realizar login.' });
+    }
+  });
+
   app.post('/api/auth/first-access', async (req, res) => {
     try {
       const { email, newPassword } = req.body;
@@ -1254,6 +1333,12 @@ async function startServer() {
       console.error('Error in /api/clear-all-data:', err?.message);
       res.status(500).json({ error: err?.message });
     }
+  });
+
+  // Serve static files from public directory
+  app.use(express.static(path.join(process.cwd(), 'public')));
+  app.get(['/manifest.webmanifest', '/manifest.json'], (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'manifest.json'));
   });
 
   // Vite Middleware or Static Production
