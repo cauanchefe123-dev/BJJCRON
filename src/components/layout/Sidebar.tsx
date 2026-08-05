@@ -69,14 +69,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-30 lg:hidden"
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-30 lg:hidden print:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 text-slate-200 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 text-slate-200 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 print:hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
