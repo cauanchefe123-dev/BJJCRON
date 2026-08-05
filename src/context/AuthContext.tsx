@@ -787,31 +787,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const rejectUser = (identifier: string) => {
     const cleanId = identifier.trim().toLowerCase();
 
-    // Update Users
-    setUsers(prev => prev.map(u => {
-      if (u.id === identifier || u.studentId === identifier || u.email.toLowerCase() === cleanId) {
-        return { ...u, approvalStatus: 'REJECTED', isActivated: true };
-      }
-      return u;
-    }));
+    // Filter out from Users state
+    setUsers(prev => prev.filter(u => u.id !== identifier && u.studentId !== identifier && u.email.toLowerCase() !== cleanId));
 
-    // Update Students
-    const savedStudents = localStorage.getItem('bjjcron_students');
-    if (savedStudents) {
-      const studentsList = JSON.parse(savedStudents);
-      const updated = studentsList.map((s: any) => {
-        if (s.id === identifier || s.email.toLowerCase() === cleanId) {
-          return { ...s, approvalStatus: 'REJECTED', active: false };
-        }
-        return s;
-      });
-      localStorage.setItem('bjjcron_students', JSON.stringify(updated));
-    }
-    fetch('/api/students/' + encodeURIComponent(identifier), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ approvalStatus: 'REJECTED', active: false })
-    }).catch(() => {});
+    // Remove from localStorage bjjcron_users
+    try {
+      const savedUsers = localStorage.getItem('bjjcron_users');
+      if (savedUsers) {
+        const usersList = JSON.parse(savedUsers);
+        const updated = usersList.filter((u: any) => u.id !== identifier && u.studentId !== identifier && (u.email && u.email.toLowerCase() !== cleanId));
+        localStorage.setItem('bjjcron_users', JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    // Remove from localStorage bjjcron_students
+    try {
+      const savedStudents = localStorage.getItem('bjjcron_students');
+      if (savedStudents) {
+        const studentsList = JSON.parse(savedStudents);
+        const updated = studentsList.filter((s: any) => s.id !== identifier && (s.email && s.email.toLowerCase() !== cleanId));
+        localStorage.setItem('bjjcron_students', JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    fetch('/api/students/' + encodeURIComponent(identifier), { method: 'DELETE' }).catch(() => {});
+    fetch('/api/users/' + encodeURIComponent(identifier), { method: 'DELETE' }).catch(() => {});
+
     window.dispatchEvent(new Event('bjjcron_users_updated'));
     window.dispatchEvent(new Event('bjjcron_students_updated'));
   };

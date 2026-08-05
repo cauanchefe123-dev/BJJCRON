@@ -383,7 +383,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const savedUsers = localStorage.getItem('bjjcron_users');
       if (savedUsers) {
         const usersList = JSON.parse(savedUsers);
-        const userIdx = usersList.findIndex((u: any) => u.studentId === id || (updates.email && u.email && u.email.trim().toLowerCase() === updates.email.trim().toLowerCase()));
+        const userIdx = usersList.findIndex((u: any) => 
+          (u.studentId === id) || 
+          (u.role === 'ALUNO' && updates.email && u.email && u.email.trim().toLowerCase() === updates.email.trim().toLowerCase())
+        );
         if (userIdx !== -1) {
           if (updates.name) usersList[userIdx].name = updates.name;
           if (updates.email) usersList[userIdx].email = updates.email.trim().toLowerCase();

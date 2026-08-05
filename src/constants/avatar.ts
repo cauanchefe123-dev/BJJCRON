@@ -85,11 +85,14 @@ export function getUserAvatar(user?: Partial<User> | null, studentObj?: Partial<
   ) {
     return user.avatarUrl;
   }
-  if (studentObj) {
+  if (user?.role === 'ALUNO' && studentObj) {
     return getStudentAvatar(studentObj);
   }
   if (user?.role === 'PROFESSOR' || user?.role === 'ADMIN') {
     return getGiAvatarForBelt('PRETA', 3);
+  }
+  if (studentObj) {
+    return getStudentAvatar(studentObj);
   }
   return getGiAvatarForBelt('BRANCA', 0);
 }
@@ -97,33 +100,8 @@ export function getUserAvatar(user?: Partial<User> | null, studentObj?: Partial<
 /**
  * Safely resolves the Student record for a User without falling back to unrelated students.
  */
-export function resolveStudentForUser(user: User | null, students: Student[]): Student {
-  if (!user) {
-    return students[0] || ({
-      id: 'std-default',
-      registrationNumber: 'BJJ-2026-001',
-      name: 'Atleta',
-      email: '',
-      phone: '',
-      birthDate: '2000-01-01',
-      photoUrl: DEFAULT_BLACK_GI_AVATAR,
-      belt: 'BRANCA',
-      stripes: 0,
-      startDate: new Date().toISOString().split('T')[0],
-      totalClassesAttended: 0,
-      classesSinceLastGraduation: 0,
-      weightCategory: 'MÉDIO',
-      ageCategory: 'ADULTO',
-      active: true,
-      planName: 'Plano Mensal Padrão',
-      planPrice: 240,
-      paymentDueDateDay: 10,
-      paymentStatus: 'PENDENTE',
-      qrCodeToken: 'BJJCRON-std-default',
-      approvalStatus: 'APPROVED',
-      hasActivatedAccount: true,
-    } as Student);
-  }
+export function resolveStudentForUser(user: User | null, students: Student[]): Student | null {
+  if (!user) return null;
 
   const cleanEmail = user.email?.trim().toLowerCase();
   
@@ -161,28 +139,5 @@ export function resolveStudentForUser(user: User | null, students: Student[]): S
     };
   }
 
-  return students[0] || ({
-    id: 'std-default',
-    registrationNumber: 'BJJ-2026-001',
-    name: user.name || 'Atleta',
-    email: user.email || '',
-    phone: user.phone || '',
-    birthDate: '2000-01-01',
-    photoUrl: DEFAULT_BLACK_GI_AVATAR,
-    belt: 'BRANCA',
-    stripes: 0,
-    startDate: new Date().toISOString().split('T')[0],
-    totalClassesAttended: 0,
-    classesSinceLastGraduation: 0,
-    weightCategory: 'MÉDIO',
-    ageCategory: 'ADULTO',
-    active: true,
-    planName: 'Plano Mensal Padrão',
-    planPrice: 240,
-    paymentDueDateDay: 10,
-    paymentStatus: 'PENDENTE',
-    qrCodeToken: `BJJCRON-${user.id}`,
-    approvalStatus: 'APPROVED',
-    hasActivatedAccount: true,
-  } as Student);
+  return null;
 }

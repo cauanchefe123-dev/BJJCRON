@@ -5,7 +5,7 @@ import { BeltBadge } from '../belts/BeltBadge';
 import { Users, UserCheck, UserX, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 
 export const PendingStudentApprovals: React.FC = () => {
-  const { students, updateStudent } = useData();
+  const { students, updateStudent, deleteStudent } = useData();
   const { approveUser, rejectUser } = useAuth();
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -21,8 +21,8 @@ export const PendingStudentApprovals: React.FC = () => {
   const handleReject = (studentId: string, studentName: string) => {
     if (window.confirm(`Deseja realmente recusar e remover a solicitação de ${studentName}?`)) {
       rejectUser(studentId);
-      updateStudent(studentId, { approvalStatus: 'REJECTED', active: false });
-      setToastMsg(`🚫 Solicitação de ${studentName} foi recusada.`);
+      deleteStudent(studentId);
+      setToastMsg(`🚫 Solicitação de ${studentName} foi recusada e removida.`);
       setTimeout(() => setToastMsg(null), 5000);
     }
   };
