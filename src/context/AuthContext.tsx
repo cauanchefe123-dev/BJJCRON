@@ -60,12 +60,11 @@ const getSyncedInitialUsers = (): User[] => {
   const savedUsers = localStorage.getItem('bjjcron_users');
   let baseUsers: User[] = savedUsers ? JSON.parse(savedUsers) : INITIAL_USERS;
 
-  // Ensure all INITIAL_USERS (including admin cauanchefe123@gmail.com) are always present
-  INITIAL_USERS.forEach(initU => {
-    if (!baseUsers.some(u => u.email.trim().toLowerCase() === initU.email.trim().toLowerCase() || u.id === initU.id)) {
-      baseUsers.push(initU);
-    }
-  });
+  // Ensure essential admin user (cauanchefe123@gmail.com) is present
+  const cauanAdmin = INITIAL_USERS.find(u => u.email.includes('cauanchefe123'));
+  if (cauanAdmin && !baseUsers.some(u => u.email.trim().toLowerCase() === cauanAdmin.email.trim().toLowerCase())) {
+    baseUsers.push(cauanAdmin);
+  }
 
   // Replace unsplash avatars with DEFAULT_BLACK_GI_AVATAR
   baseUsers = baseUsers.map(u => ({

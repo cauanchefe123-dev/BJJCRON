@@ -70,6 +70,37 @@ export function subscribeFirestoreConfig(callback: (config: any) => void) {
   }
 }
 
+export async function clearFirestoreCollection(collectionName: string) {
+  try {
+    const colRef = collection(db, collectionName);
+    const snap = await getDocs(colRef);
+    if (snap.empty) return;
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    console.log(`[Firestore] Coleção ${collectionName} zerada com sucesso!`);
+  } catch (err) {
+    console.warn(`[Firestore] Erro ao zerar coleção ${collectionName}:`, err);
+  }
+}
+
+export async function clearAllFirestoreCollections() {
+  const collectionsToClear = [
+    'students',
+    'teachers',
+    'classes',
+    'attendances',
+    'payments',
+    'graduations',
+    'beltRequests',
+    'trainingLogs',
+    'teacherObservations',
+  ];
+  for (const col of collectionsToClear) {
+    await clearFirestoreCollection(col);
+  }
+}
+
 export async function seedInitialFirestoreData(data: {
   students: any[];
   teachers: any[];

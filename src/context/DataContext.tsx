@@ -33,7 +33,7 @@ import {
   saveConfigToFirestore,
   subscribeFirestoreCollection,
   subscribeFirestoreConfig,
-  seedInitialFirestoreData,
+  clearAllFirestoreCollections,
 } from '../lib/firebaseStore';
 
 interface DataContextType {
@@ -97,7 +97,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [students, setStudents] = useState<Student[]>(() => {
     const saved = localStorage.getItem('bjjcron_students');
-    const rawList: Student[] = saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+    const rawList: Student[] = saved ? JSON.parse(saved) : [];
     return rawList.map(s => ({
       ...s,
       photoUrl: (!s.photoUrl || s.photoUrl.includes('unsplash.com')) ? DEFAULT_BLACK_GI_AVATAR : s.photoUrl
@@ -106,7 +106,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [teachers, setTeachers] = useState<Teacher[]>(() => {
     const saved = localStorage.getItem('bjjcron_teachers');
-    const rawList: Teacher[] = saved ? JSON.parse(saved) : INITIAL_TEACHERS;
+    const rawList: Teacher[] = saved ? JSON.parse(saved) : [];
     return rawList.map(t => ({
       ...t,
       photoUrl: (!t.photoUrl || t.photoUrl.includes('unsplash.com')) ? DEFAULT_BLACK_GI_AVATAR : t.photoUrl
@@ -115,37 +115,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [classes, setClasses] = useState<BJJClass[]>(() => {
     const saved = localStorage.getItem('bjjcron_classes');
-    return saved ? JSON.parse(saved) : INITIAL_CLASSES;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [attendances, setAttendances] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem('bjjcron_attendances');
-    return saved ? JSON.parse(saved) : INITIAL_ATTENDANCE;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [payments, setPayments] = useState<PaymentRecord[]>(() => {
     const saved = localStorage.getItem('bjjcron_payments');
-    return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [graduations, setGraduations] = useState<Graduation[]>(() => {
     const saved = localStorage.getItem('bjjcron_graduations');
-    return saved ? JSON.parse(saved) : INITIAL_GRADUATIONS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [beltRequests, setBeltRequests] = useState<BeltChangeRequest[]>(() => {
     const saved = localStorage.getItem('bjjcron_belt_requests');
-    return saved ? JSON.parse(saved) : INITIAL_BELT_REQUESTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [trainingLogs, setTrainingLogs] = useState<TrainingLog[]>(() => {
     const saved = localStorage.getItem('bjjcron_training_logs');
-    return saved ? JSON.parse(saved) : INITIAL_TRAINING_LOGS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [teacherObservations, setTeacherObservations] = useState<TeacherObservation[]>(() => {
     const saved = localStorage.getItem('bjjcron_teacher_observations');
-    return saved ? JSON.parse(saved) : INITIAL_TEACHER_OBSERVATIONS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [academyConfig, setAcademyConfig] = useState<AcademyConfig>(() => {
@@ -998,15 +998,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const clearAllDataToEmpty = () => {
-    localStorage.removeItem('bjjcron_students');
-    localStorage.removeItem('bjjcron_teachers');
-    localStorage.removeItem('bjjcron_classes');
-    localStorage.removeItem('bjjcron_attendances');
-    localStorage.removeItem('bjjcron_payments');
-    localStorage.removeItem('bjjcron_graduations');
-    localStorage.removeItem('bjjcron_belt_requests');
-    localStorage.removeItem('bjjcron_training_logs');
-    localStorage.removeItem('bjjcron_teacher_observations');
+    localStorage.setItem('bjjcron_students', JSON.stringify([]));
+    localStorage.setItem('bjjcron_teachers', JSON.stringify([]));
+    localStorage.setItem('bjjcron_classes', JSON.stringify([]));
+    localStorage.setItem('bjjcron_attendances', JSON.stringify([]));
+    localStorage.setItem('bjjcron_payments', JSON.stringify([]));
+    localStorage.setItem('bjjcron_graduations', JSON.stringify([]));
+    localStorage.setItem('bjjcron_belt_requests', JSON.stringify([]));
+    localStorage.setItem('bjjcron_training_logs', JSON.stringify([]));
+    localStorage.setItem('bjjcron_teacher_observations', JSON.stringify([]));
 
     setStudents([]);
     setTeachers([]);
@@ -1017,6 +1017,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBeltRequests([]);
     setTrainingLogs([]);
     setTeacherObservations([]);
+
+    clearAllFirestoreCollections();
     fetch('/api/clear-all-data', { method: 'POST' }).catch(() => {});
   };
 
