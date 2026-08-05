@@ -185,60 +185,44 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => { safeSave('bjjcron_teacher_observations', teacherObservations); }, [teacherObservations]);
   useEffect(() => { safeSave('bjjcron_academy_config', academyConfig); }, [academyConfig]);
 
-  // Real-time Firestore Cloud Synchronization + Seed
+  // Real-time Firestore Cloud Synchronization
   useEffect(() => {
-    // Seed Firestore if empty
-    seedInitialFirestoreData({
-      students,
-      teachers,
-      classes,
-      attendances,
-      payments,
-      graduations,
-      beltRequests,
-      trainingLogs,
-      teacherObservations,
-      academyConfig,
-    });
-
     const unsubStudents = subscribeFirestoreCollection<Student>('students', (data) => {
-      if (data && data.length > 0) {
-        setStudents(data);
-        localStorage.setItem('bjjcron_students', JSON.stringify(data));
-        window.dispatchEvent(new Event('bjjcron_students_updated'));
-      }
+      setStudents(data);
+      localStorage.setItem('bjjcron_students', JSON.stringify(data));
+      window.dispatchEvent(new Event('bjjcron_students_updated'));
     });
 
     const unsubTeachers = subscribeFirestoreCollection<Teacher>('teachers', (data) => {
-      if (data && data.length > 0) setTeachers(data);
+      setTeachers(data);
     });
 
     const unsubClasses = subscribeFirestoreCollection<BJJClass>('classes', (data) => {
-      if (data && data.length > 0) setClasses(data);
+      setClasses(data);
     });
 
     const unsubAttendances = subscribeFirestoreCollection<AttendanceRecord>('attendances', (data) => {
-      if (data && data.length > 0) setAttendances(data);
+      setAttendances(data);
     });
 
     const unsubPayments = subscribeFirestoreCollection<PaymentRecord>('payments', (data) => {
-      if (data && data.length > 0) setPayments(data);
+      setPayments(data);
     });
 
     const unsubGraduations = subscribeFirestoreCollection<Graduation>('graduations', (data) => {
-      if (data && data.length > 0) setGraduations(data);
+      setGraduations(data);
     });
 
     const unsubBeltRequests = subscribeFirestoreCollection<BeltChangeRequest>('beltRequests', (data) => {
-      if (data && data.length > 0) setBeltRequests(data);
+      setBeltRequests(data);
     });
 
     const unsubTrainingLogs = subscribeFirestoreCollection<TrainingLog>('trainingLogs', (data) => {
-      if (data && data.length > 0) setTrainingLogs(data);
+      setTrainingLogs(data);
     });
 
     const unsubTeacherObs = subscribeFirestoreCollection<TeacherObservation>('teacherObservations', (data) => {
-      if (data && data.length > 0) setTeacherObservations(data);
+      setTeacherObservations(data);
     });
 
     const unsubConfig = subscribeFirestoreConfig((data) => {

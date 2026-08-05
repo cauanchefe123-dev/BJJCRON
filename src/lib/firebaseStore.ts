@@ -43,10 +43,8 @@ export function subscribeFirestoreCollection<T>(
   try {
     const colRef = collection(db, collectionName);
     return onSnapshot(colRef, (snapshot) => {
-      if (!snapshot.empty) {
-        const items: T[] = snapshot.docs.map(doc => doc.data() as T);
-        callback(items);
-      }
+      const items: T[] = snapshot.docs.map(doc => doc.data() as T);
+      callback(items);
     }, (error) => {
       console.warn(`[Firestore] Erro de escuta na coleção ${collectionName}:`, error);
     });

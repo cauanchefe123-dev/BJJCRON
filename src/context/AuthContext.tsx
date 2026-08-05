@@ -154,17 +154,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubFirestoreUsers = subscribeFirestoreCollection<User>('users', (cloudUsers) => {
       if (cloudUsers && cloudUsers.length > 0) {
-        setUsers(prev => {
-          // Merge admin and existing if needed, ensuring INITIAL_USERS exist
-          const merged = [...cloudUsers];
-          INITIAL_USERS.forEach(initU => {
-            if (!merged.some(u => u.email.trim().toLowerCase() === initU.email.trim().toLowerCase() || u.id === initU.id)) {
-              merged.push(initU);
-            }
-          });
-          localStorage.setItem('bjjcron_users', JSON.stringify(merged));
-          return merged;
-        });
+        setUsers(cloudUsers);
+        localStorage.setItem('bjjcron_users', JSON.stringify(cloudUsers));
       }
     });
 
