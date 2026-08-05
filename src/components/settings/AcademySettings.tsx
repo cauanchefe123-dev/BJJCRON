@@ -39,7 +39,7 @@ export const AcademySettings: React.FC = () => {
   } = useData();
   const { approveUser, rejectUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'info' | 'requests'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'smtp' | 'requests'>('info');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -55,6 +55,68 @@ export const AcademySettings: React.FC = () => {
     supabaseUrl: academyConfig.supabaseConfig?.url || '',
     supabaseAnonKey: academyConfig.supabaseConfig?.anonKey || '',
   });
+
+  const [smtpData, setSmtpData] = useState({
+    host: 'smtp.gmail.com',
+    port: 587,
+    user: '',
+    pass: '',
+    fromName: academyConfig.fantasyName || academyConfig.name || 'BJJCRON ACADEMY',
+  });
+  const [smtpStatus, setSmtpStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [savingSmtp, setSavingSmtp] = useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/config/smtp')
+      .then(r => r.json())
+      .then(data => {
+        if (data) {
+          setSmtpData(prev => ({
+            ...prev,
+            host: data.host || 'smtp.gmail.com',
+            port: data.port || 587,
+            user: data.user || '',
+            fromName: data.fromName || 'BJJCRON ACADEMY',
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveSmtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setSavingSmtp(true);
+    setSmtpStatus(null);
+    try {
+      const res = await fetch('/api/config/smtp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...smtpData,
+          fromName: smtpData.fromName || formData.fantasyName || formData.name || 'BJJCRON ACADEMY'
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSmtpStatus({
+          type: 'success',
+          message: '✅ Servidor de e-mails ativado e configurado com sucesso! Os e-mails agora serão enviados automaticamente.'
+        });
+      } else {
+        setSmtpStatus({
+          type: 'error',
+          message: '❌ Erro ao salvar configurações de e-mail.'
+        });
+      }
+    } catch (err: any) {
+      setSmtpStatus({
+        type: 'error',
+        message: '❌ Falha de conexão ao salvar SMTP.'
+      });
+    } finally {
+      setSavingSmtp(false);
+    }
+  };
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -195,6 +257,18 @@ export const AcademySettings: React.FC = () => {
           >
             <Settings className="w-4 h-4" />
             Dados & Logo
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('smtp')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'smtp'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Mail className="w-4 h-4" />
+            📧 Servidor de E-mail
           </button>
           <button
             type="button"
@@ -402,6 +476,110 @@ export const AcademySettings: React.FC = () => {
             </div>
           </div>
 
+          {/* Configuração de Servidor de E-mail (SMTP / Gmail) */}
+          <div className="space-y-4 pt-6 border-t border-slate-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h4 className="font-bold text-sm text-amber-400">
+                    Configuração de E-mail da Academia (SMTP / Gmail Automático)
+                  </h4>
+                  <p className="text-slate-400 text-[11px]">
+                    Cadastre o e-mail da sua academia para que o servidor envie notificações de mensalidade e recuperação de senha diretamente para os alunos.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {smtpStatus && (
+              <div className={`p-3 rounded-xl border text-xs font-bold ${
+                smtpStatus.type === 'success'
+                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                  : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+              }`}>
+                {smtpStatus.message}
+              </div>
+            )}
+
+            {/* Informações explicativas passo a passo */}
+            <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 text-[11px] text-amber-200/90 space-y-1">
+              <strong className="block text-amber-300 font-bold">📌 Como configurar com Gmail em 3 passos:</strong>
+              <p>1. Acesse <strong>myaccount.google.com</strong> e vá em <strong>Segurança</strong>.</p>
+              <p>2. Certifique-se de que a <strong>Verificação em 2 etapas</strong> está ativada.</p>
+              <p>3. Pesquise por <strong>"Senhas de App"</strong> (App Passwords) no topo da conta Google, crie uma nova para "E-mail" e cole os 16 caracteres gerados no campo <em>"Senha de App do Gmail"</em> abaixo.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">E-mail do Remetente (ex: academia@gmail.com)</label>
+                <input
+                  type="email"
+                  placeholder="suaacademia@gmail.com"
+                  value={smtpData.user}
+                  onChange={e => setSmtpData({ ...smtpData, user: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Senha de App do Gmail (16 caracteres)</label>
+                <input
+                  type="password"
+                  placeholder="xxxx xxxx xxxx xxxx"
+                  value={smtpData.pass}
+                  onChange={e => setSmtpData({ ...smtpData, pass: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Servidor SMTP (Host)</label>
+                <input
+                  type="text"
+                  placeholder="smtp.gmail.com"
+                  value={smtpData.host}
+                  onChange={e => setSmtpData({ ...smtpData, host: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Porta SMTP</label>
+                <input
+                  type="number"
+                  placeholder="587"
+                  value={smtpData.port}
+                  onChange={e => setSmtpData({ ...smtpData, port: Number(e.target.value) })}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none font-mono"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-slate-300 font-bold block mb-1">Nome Exibido no Remetente</label>
+                <input
+                  type="text"
+                  placeholder="BJJCRON Jiu-Jitsu Academy"
+                  value={smtpData.fromName}
+                  onChange={e => setSmtpData({ ...smtpData, fromName: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleSaveSmtp()}
+                  disabled={savingSmtp}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {savingSmtp ? 'Salvando...' : 'Ativar E-mail Automático no Servidor'}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Supabase Integration Box */}
           <div className="space-y-4 pt-4 border-t border-slate-800">
             <div className="flex items-center gap-2">
@@ -449,6 +627,129 @@ export const AcademySettings: React.FC = () => {
             </button>
           </div>
         </form>
+      )}
+
+      {/* TAB 2: SERVIDOR DE E-MAIL (GMAIL / SMTP) */}
+      {activeTab === 'smtp' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white space-y-6 text-xs shadow-lg">
+          <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+              <Mail className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-amber-400">
+                Configuração do Servidor de E-mails da Academia
+              </h3>
+              <p className="text-slate-400 text-xs">
+                Cadastre o e-mail oficial da sua academia para disparar cobranças, avisos e notificações de graduação direto do servidor.
+              </p>
+            </div>
+          </div>
+
+          {smtpStatus && (
+            <div className={`p-4 rounded-xl border text-xs font-bold ${
+              smtpStatus.type === 'success'
+                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+            }`}>
+              {smtpStatus.message}
+            </div>
+          )}
+
+          {/* Passo a passo do Gmail */}
+          <div className="bg-amber-950/20 border border-amber-500/30 rounded-2xl p-5 text-xs text-amber-100 space-y-3">
+            <h4 className="font-bold text-amber-300 text-sm flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              Como ativar o envio automático usando uma conta Gmail (Gratuito):
+            </h4>
+            <ol className="list-decimal list-inside space-y-2 text-slate-200">
+              <li>
+                Acesse sua conta Google em <a href="https://myaccount.google.com/security" target="_blank" rel="noreferrer" className="text-amber-400 underline font-bold">myaccount.google.com/security</a>.
+              </li>
+              <li>
+                Certifique-se de que a <strong>Verificação em duas etapas</strong> está ATIVADA na sua conta.
+              </li>
+              <li>
+                Pesquise por <strong className="text-amber-300">"Senhas de app"</strong> (App passwords) no campo de busca do topo da conta Google.
+              </li>
+              <li>
+                Crie uma senha de app com o nome "BJJCRON" e copie os <strong>16 caracteres gerados</strong>.
+              </li>
+              <li>
+                Cole a senha de 16 letras no campo <strong className="text-amber-300">"Senha de App do Gmail"</strong> abaixo e clique em Salvar.
+              </li>
+            </ol>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 bg-slate-950 p-5 rounded-2xl border border-slate-800">
+            <div>
+              <label className="text-slate-300 font-bold block mb-1.5">E-mail do Remetente (Gmail da Academia)</label>
+              <input
+                type="email"
+                placeholder="suaacademia@gmail.com"
+                value={smtpData.user}
+                onChange={e => setSmtpData({ ...smtpData, user: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-bold block mb-1.5">Senha de App do Gmail (16 caracteres)</label>
+              <input
+                type="password"
+                placeholder="xxxx xxxx xxxx xxxx"
+                value={smtpData.pass}
+                onChange={e => setSmtpData({ ...smtpData, pass: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-bold block mb-1.5">Servidor SMTP (Host)</label>
+              <input
+                type="text"
+                placeholder="smtp.gmail.com"
+                value={smtpData.host}
+                onChange={e => setSmtpData({ ...smtpData, host: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-bold block mb-1.5">Porta SMTP</label>
+              <input
+                type="number"
+                placeholder="587"
+                value={smtpData.port}
+                onChange={e => setSmtpData({ ...smtpData, port: Number(e.target.value) })}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="text-slate-300 font-bold block mb-1.5">Nome Exibido no Remetente</label>
+              <input
+                type="text"
+                placeholder="BJJCRON Jiu-Jitsu Academy"
+                value={smtpData.fromName}
+                onChange={e => setSmtpData({ ...smtpData, fromName: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none text-sm"
+              />
+            </div>
+
+            <div className="sm:col-span-2 flex justify-end pt-3">
+              <button
+                type="button"
+                onClick={() => handleSaveSmtp()}
+                disabled={savingSmtp}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {savingSmtp ? 'Ativando...' : 'Ativar Servidor de E-mail Automático'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* TAB 2: STUDENT REQUESTS & REAL-TIME EVOLUTION LINK */}
