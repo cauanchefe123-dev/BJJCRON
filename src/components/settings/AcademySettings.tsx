@@ -111,27 +111,37 @@ export const AcademySettings: React.FC = () => {
     } catch (e) {}
 
     try {
-      const res = await fetch('/api/config/smtp', {
+      // First save config
+      await fetch('/api/config/smtp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
+
+      // Then test connection live
+      const testRes = await fetch('/api/config/smtp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const testData = await testRes.json();
+
+      if (testRes.ok && testData?.success) {
         setSmtpStatus({
           type: 'success',
-          message: '✅ Servidor de e-mails ativado e configurado com sucesso! As credenciais foram salvas.'
+          message: `✅ Servidor Gmail ativado com SUCESSO! E-mail de teste enviado para ${payload.user}. Os disparos para atletas já estão ativos!`
         });
       } else {
         setSmtpStatus({
-          type: 'success',
-          message: '✅ Configurações de e-mail salvas com sucesso no sistema local!'
+          type: 'error',
+          message: testData?.message || '❌ Falha de autenticação no Gmail. Verifique a Senha de App de 16 caracteres.'
         });
       }
     } catch (err: any) {
-      // In case server fetch has network quirk, local save succeeded!
       setSmtpStatus({
         type: 'success',
-        message: '✅ Configurações de e-mail salvas localmente e prontas para disparo!'
+        message: '✅ Configurações salvas com sucesso no navegador!'
       });
     } finally {
       setSavingSmtp(false);

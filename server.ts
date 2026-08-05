@@ -67,27 +67,118 @@ async function startServer() {
 
   app.post('/api/config/smtp', (req, res) => {
     const { host, port, user, pass, fromName } = req.body;
+    const cleanUser = (user || '').trim();
+    const cleanPass = (pass || '').trim().replace(/\s+/g, '');
+
     dynamicSmtpConfig = {
       host: host || 'smtp.gmail.com',
       port: Number(port) || 587,
-      user: user || '',
-      pass: pass || '',
-      fromName: fromName || 'BJJCRON Sistema Jiu-Jitsu',
-      enabled: Boolean(user && pass)
+      user: cleanUser,
+      pass: cleanPass,
+      fromName: fromName || 'BJJCRON ACADEMY',
+      enabled: Boolean(cleanUser && cleanPass)
     };
     console.log(`[SMTP CONFIG UPDATED] user: ${dynamicSmtpConfig.user}, host: ${dynamicSmtpConfig.host}`);
     res.json({ success: true, config: { user: dynamicSmtpConfig.user, host: dynamicSmtpConfig.host, enabled: dynamicSmtpConfig.enabled } });
   });
 
+  app.post('/api/config/smtp/test', async (req, res) => {
+    try {
+      const { host, port, user, pass, fromName, testEmail } = req.body;
+      const smtpUser = (user || dynamicSmtpConfig.user || '').trim();
+      const smtpPass = (pass || dynamicSmtpConfig.pass || '').trim().replace(/\s+/g, '');
+      const smtpHost = host || dynamicSmtpConfig.host || 'smtp.gmail.com';
+      const smtpPort = Number(port || dynamicSmtpConfig.port) || 587;
+      const senderName = fromName || dynamicSmtpConfig.fromName || 'BJJCRON ACADEMY';
+
+      if (!smtpUser || !smtpPass) {
+        return res.status(400).json({
+          success: false,
+          message: 'Informe o E-mail e a Senha de App do Gmail (16 caracteres) antes de testar.'
+        });
+      }
+
+      const isGmail = smtpHost.includes('gmail');
+      const transporter = nodemailer.createTransport(
+        isGmail
+          ? {
+              service: 'gmail',
+              auth: { user: smtpUser, pass: smtpPass },
+              tls: { rejectUnauthorized: false }
+            }
+          : {
+              host: smtpHost,
+              port: smtpPort,
+              secure: smtpPort === 465,
+              auth: { user: smtpUser, pass: smtpPass },
+              tls: { rejectUnauthorized: false }
+            }
+      );
+
+      const targetRecipient = (testEmail || smtpUser).trim();
+
+      await transporter.sendMail({
+        from: `"${senderName}" <${smtpUser}>`,
+        to: targetRecipient,
+        subject: '✅ BJJCRON — Conexão de E-mail Testada com Sucesso!',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 28px; border-radius: 16px; border: 1px solid #334155;">
+            <h2 style="color: #f59e0b; margin-top: 0; font-size: 20px;">✓ Servidor de E-mail Ativo!</h2>
+            <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+              O sistema <strong>BJJCRON</strong> conectou com sucesso à sua conta do Gmail (<strong>${smtpUser}</strong>).
+            </p>
+            <div style="background: #1e293b; border: 1px solid #10b981; padding: 16px; border-radius: 12px; margin: 16px 0; color: #10b981; font-weight: bold; font-size: 13px;">
+              ✓ Disparos automáticos ativados para mensalidades, cobranças e avisos aos atletas.
+            </div>
+            <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
+            <span style="font-size: 11px; color: #64748b;">E-mail gerado pelo BJJCRON em ${new Date().toLocaleString('pt-BR')}</span>
+          </div>
+        `
+      });
+
+      // Update in-memory config if test succeeds
+      dynamicSmtpConfig = {
+        host: smtpHost,
+        port: smtpPort,
+        user: smtpUser,
+        pass: smtpPass,
+        fromName: senderName,
+        enabled: true
+      };
+
+      return res.json({
+        success: true,
+        message: `E-mail de teste enviado com SUCESSO para ${targetRecipient}! Verifique a caixa de entrada.`
+      });
+    } catch (err: any) {
+      console.error('[SMTP TEST ERROR]', err?.message);
+      let errMsg = err?.message || 'Erro ao conectar ao servidor de e-mail.';
+      if (errMsg.includes('535') || errMsg.includes('BadCredentials') || errMsg.includes('Username and Password not accepted')) {
+        errMsg = 'Senha de App incorreta ou rejeitada pelo Google. Certifique-se de que a Verificação em duas etapas está ativada na sua conta Google e crie uma "Senha de app" de 16 caracteres em myaccount.google.com/apppasswords.';
+      }
+      return res.status(400).json({
+        success: false,
+        message: `Falha na autenticação do Gmail: ${errMsg}`
+      });
+    }
+  });
+
   app.post('/api/auth/recover-password', async (req, res) => {
     try {
-      const { email, code, name } = req.body;
+      const { email, code, name, smtpConfig } = req.body;
       if (!email || !code) {
         return res.status(400).json({ success: false, message: 'E-mail e código são obrigatórios.' });
       }
 
       const recipientEmail = String(email).trim().toLowerCase();
       const recipientName = name || 'Atleta BJJCRON';
+
+      const smtp = smtpConfig || dynamicSmtpConfig;
+      const smtpUser = (smtp.user || '').trim();
+      const smtpPass = (smtp.pass || '').trim().replace(/\s+/g, '');
+      const smtpHost = smtp.host || 'smtp.gmail.com';
+      const smtpPort = Number(smtp.port) || 587;
+      const senderName = smtp.fromName || 'BJJCRON ACADEMY';
 
       const htmlContent = `
         <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #f8fafc; padding: 32px; border-radius: 16px; border: 1px solid #1e293b;">
@@ -118,71 +209,54 @@ async function startServer() {
         </div>
       `;
 
-      // 1) If dynamicSmtpConfig is configured with user/pass, use Nodemailer via real SMTP (Gmail/etc.)
-      if (dynamicSmtpConfig.user && dynamicSmtpConfig.pass) {
-        console.log(`[BJJCRON EMAIL] Enviando e-mail REAL via SMTP (${dynamicSmtpConfig.host}) para ${recipientEmail}...`);
-        const transporter = nodemailer.createTransport({
-          host: dynamicSmtpConfig.host || 'smtp.gmail.com',
-          port: dynamicSmtpConfig.port || 587,
-          secure: dynamicSmtpConfig.port === 465, // true for 465, false for other ports
-          auth: {
-            user: dynamicSmtpConfig.user,
-            pass: dynamicSmtpConfig.pass
-          }
-        });
+      if (smtpUser && smtpPass) {
+        try {
+          console.log(`[BJJCRON EMAIL] Enviando e-mail REAL via SMTP (${smtpHost}) para ${recipientEmail}...`);
+          const isGmail = smtpHost.includes('gmail');
+          const transporter = nodemailer.createTransport(
+            isGmail
+              ? {
+                  service: 'gmail',
+                  auth: { user: smtpUser, pass: smtpPass },
+                  tls: { rejectUnauthorized: false }
+                }
+              : {
+                  host: smtpHost,
+                  port: smtpPort,
+                  secure: smtpPort === 465,
+                  auth: { user: smtpUser, pass: smtpPass },
+                  tls: { rejectUnauthorized: false }
+                }
+          );
 
-        const mailOptions = {
-          from: `"${dynamicSmtpConfig.fromName}" <${dynamicSmtpConfig.user}>`,
-          to: recipientEmail,
-          subject: `BJJCRON — Código de Recuperação: ${code}`,
-          html: htmlContent
-        };
+          const mailOptions = {
+            from: `"${senderName}" <${smtpUser}>`,
+            to: recipientEmail,
+            subject: `BJJCRON — Código de Recuperação: ${code}`,
+            html: htmlContent
+          };
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`[BJJCRON EMAIL] E-mail enviado com sucesso via SMTP! MessageId: ${info.messageId}`);
-        return res.json({
-          success: true,
-          method: 'smtp',
-          message: `E-mail de recuperação enviado com sucesso para ${recipientEmail}! Verifique sua caixa de entrada ou spam.`
-        });
-      }
-
-      // 2) If SMTP is not yet configured, use a free transactional relay / FormSubmit API fallback so an email is STILL delivered!
-      console.log(`[BJJCRON EMAIL] SMTP ainda não configurado. Tentando envio REAL via FormSubmit Relay para ${recipientEmail}...`);
-      try {
-        const fallbackResponse = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipientEmail)}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            _subject: `BJJCRON — Código de Recuperação de Senha: ${code}`,
-            _template: 'box',
-            Mensagem: `Seu código de segurança do BJJCRON é: ${code}. Digite na tela de recuperação para redefinir sua senha.`,
-            Usuario: recipientName,
-            Codigo_Verificacao: code,
-            Sistema: 'BJJCRON Jiu-Jitsu'
-          })
-        });
-        if (fallbackResponse.ok) {
-          console.log(`[BJJCRON EMAIL] E-mail enviado via FormSubmit Relay para ${recipientEmail}`);
+          const info = await transporter.sendMail(mailOptions);
+          console.log(`[BJJCRON EMAIL] E-mail enviado com sucesso via SMTP! MessageId: ${info.messageId}`);
           return res.json({
             success: true,
-            method: 'relay',
-            message: `E-mail de verificação enviado para ${recipientEmail}! (Verifique a caixa de entrada ou pasta de spam)`
+            method: 'smtp',
+            message: `E-mail de recuperação enviado para ${recipientEmail}! Verifique sua caixa de entrada.`
+          });
+        } catch (smtpErr: any) {
+          console.error(`[BJJCRON EMAIL] Erro SMTP:`, smtpErr?.message);
+          return res.status(400).json({
+            success: false,
+            message: `Falha na autenticação do Gmail: ${smtpErr?.message || 'Verifique a Senha de App do Google.'}`
           });
         }
-      } catch (relayErr: any) {
-        console.warn(`[BJJCRON EMAIL] Falha no relay fallback:`, relayErr?.message);
       }
 
-      // If all else fails, return success so frontend flow works and log instructions
-      console.log(`[BJJCRON EMAIL] Para envio SMTP com seu Gmail, configure o SMTP em Configurações de E-mail.`);
+      // Fallback
       return res.json({
         success: true,
         method: 'local_simulate',
-        message: `Código gerado: ${code}. Configure seu Gmail/SMTP no botão abaixo para receber e-mails instantaneamente na caixa de entrada.`
+        message: `Código de recuperação gerado: ${code}. Configure seu Gmail/SMTP para envio automático.`
       });
     } catch (error: any) {
       console.error(`[BJJCRON EMAIL] Erro ao enviar e-mail:`, error?.message);
@@ -195,14 +269,21 @@ async function startServer() {
 
   app.post('/api/send-email', async (req, res) => {
     try {
-      const { to, name, subject, body, academyName } = req.body;
+      const { to, name, subject, body, academyName, smtpConfig } = req.body;
       if (!to || !subject || !body) {
-        return res.status(200).json({ success: true, message: 'Comunicado registrado para o atleta.' });
+        return res.status(400).json({ success: false, message: 'E-mail, assunto e corpo são obrigatórios.' });
       }
 
       const recipientEmail = String(to).trim().toLowerCase();
       const recipientName = name || 'Atleta BJJCRON';
       const senderAcademy = academyName || 'BJJCRON Jiu-Jitsu';
+
+      const smtp = smtpConfig || dynamicSmtpConfig;
+      const smtpUser = (smtp.user || '').trim();
+      const smtpPass = (smtp.pass || '').trim().replace(/\s+/g, '');
+      const smtpHost = smtp.host || 'smtp.gmail.com';
+      const smtpPort = Number(smtp.port) || 587;
+      const senderName = smtp.fromName || senderAcademy;
 
       const formattedBody = String(body).replace(/\n/g, '<br/>');
 
@@ -227,22 +308,29 @@ async function startServer() {
         </div>
       `;
 
-      // 1) Attempt SMTP if credentials provided
-      if (dynamicSmtpConfig.user && dynamicSmtpConfig.pass) {
+      // 1) Primary SMTP Attempt
+      if (smtpUser && smtpPass) {
         try {
-          console.log(`[BJJCRON EMAIL ALUNO] Enviando e-mail REAL via SMTP para ${recipientEmail}...`);
-          const transporter = nodemailer.createTransport({
-            host: dynamicSmtpConfig.host || 'smtp.gmail.com',
-            port: dynamicSmtpConfig.port || 587,
-            secure: dynamicSmtpConfig.port === 465,
-            auth: {
-              user: dynamicSmtpConfig.user,
-              pass: dynamicSmtpConfig.pass
-            }
-          });
+          console.log(`[BJJCRON EMAIL ALUNO] Enviando e-mail REAL via SMTP (${smtpUser}) para ${recipientEmail}...`);
+          const isGmail = smtpHost.includes('gmail');
+          const transporter = nodemailer.createTransport(
+            isGmail
+              ? {
+                  service: 'gmail',
+                  auth: { user: smtpUser, pass: smtpPass },
+                  tls: { rejectUnauthorized: false }
+                }
+              : {
+                  host: smtpHost,
+                  port: smtpPort,
+                  secure: smtpPort === 465,
+                  auth: { user: smtpUser, pass: smtpPass },
+                  tls: { rejectUnauthorized: false }
+                }
+          );
 
           const mailOptions = {
-            from: `"${dynamicSmtpConfig.fromName || senderAcademy}" <${dynamicSmtpConfig.user}>`,
+            from: `"${senderName}" <${smtpUser}>`,
             to: recipientEmail,
             subject: subject,
             html: htmlContent
@@ -253,54 +341,31 @@ async function startServer() {
           return res.json({
             success: true,
             method: 'smtp',
-            message: `E-mail enviado com sucesso via Gmail/SMTP para ${recipientEmail}!`
+            message: `E-mail enviado com sucesso via Gmail (${smtpUser}) para ${recipientEmail}!`
           });
         } catch (smtpErr: any) {
-          console.warn(`[BJJCRON EMAIL ALUNO] Falha no SMTP:`, smtpErr?.message);
-        }
-      }
-
-      // 2) Attempt Web Relay Fallback
-      console.log(`[BJJCRON EMAIL ALUNO] Tentando via Relay Web para ${recipientEmail}...`);
-      try {
-        const fallbackResponse = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipientEmail)}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            _subject: `${senderAcademy}: ${subject}`,
-            _template: 'box',
-            Atleta: recipientName,
-            Assunto: subject,
-            Mensagem: body,
-            Academia: senderAcademy
-          })
-        });
-        if (fallbackResponse.ok) {
-          return res.json({
-            success: true,
-            method: 'relay',
-            message: `E-mail entregue com sucesso para ${recipientEmail}!`
+          console.error(`[BJJCRON EMAIL ALUNO] Falha no SMTP:`, smtpErr?.message);
+          let errDetail = smtpErr?.message || 'Falha ao autenticar no Gmail.';
+          if (errDetail.includes('535') || errDetail.includes('BadCredentials') || errDetail.includes('Username and Password not accepted')) {
+            errDetail = 'Senha de App do Google incorreta ou rejeitada pelo Gmail. Verifique a senha de 16 caracteres em Configurações > E-mail.';
+          }
+          return res.status(400).json({
+            success: false,
+            message: `Falha ao enviar e-mail via Gmail (${smtpUser}): ${errDetail}`
           });
         }
-      } catch (relayErr: any) {
-        console.warn(`[BJJCRON EMAIL ALUNO] Relay fallback:`, relayErr?.message);
       }
 
-      // 3) Graceful success confirmation
-      return res.json({
-        success: true,
-        method: 'registered',
-        message: `Notificação gravada e enviada para ${recipientName} (${recipientEmail})!`
+      // 2) If no SMTP user/pass configured
+      return res.status(400).json({
+        success: false,
+        message: 'Servidor de e-mail não configurado. Acesse o menu Configurações > Servidor de E-mail para cadastrar seu Gmail e Senha de App.'
       });
     } catch (error: any) {
       console.error(`[BJJCRON EMAIL ALUNO] Erro ao enviar e-mail:`, error?.message);
-      return res.json({
-        success: true,
-        method: 'registered',
-        message: `E-mail registrado com sucesso na ficha do atleta!`
+      return res.status(500).json({
+        success: false,
+        message: `Erro interno ao enviar e-mail: ${error?.message || 'Erro no servidor'}`
       });
     }
   });

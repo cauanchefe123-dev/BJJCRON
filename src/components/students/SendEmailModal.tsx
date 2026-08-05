@@ -52,6 +52,14 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({ student, onClose
     setLoading(true);
     setFeedback(null);
 
+    let smtpConfig = null;
+    try {
+      const savedLocal = localStorage.getItem('bjjcron_smtp_config');
+      if (savedLocal) {
+        smtpConfig = JSON.parse(savedLocal);
+      }
+    } catch (e) {}
+
     try {
       const response = await fetch('/api/send-email', {
         method: 'POST',
@@ -62,22 +70,27 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({ student, onClose
           subject,
           body,
           academyName: academyConfig.name || 'BJJCRON Jiu-Jitsu',
+          smtpConfig,
         }),
       });
 
-      const data = await response.json().catch(() => ({
-        success: true,
-        message: `E-mail e notificação enviados com sucesso para ${toEmail}!`,
-      }));
+      const data = await response.json();
 
-      setFeedback({
-        type: 'success',
-        message: data?.message || `E-mail enviado com sucesso para ${toEmail}!`,
-      });
+      if (response.ok && data?.success) {
+        setFeedback({
+          type: 'success',
+          message: data.message || `E-mail enviado com sucesso para ${toEmail}!`,
+        });
+      } else {
+        setFeedback({
+          type: 'error',
+          message: data?.message || 'Falha ao enviar e-mail. Verifique sua Senha de App do Google em Configurações > E-mail.',
+        });
+      }
     } catch (err: any) {
       setFeedback({
-        type: 'success',
-        message: `Comunicado e e-mail enviados com sucesso para ${toEmail}!`,
+        type: 'error',
+        message: 'Falha de conexão com o servidor ao disparar e-mail. Tente novamente.',
       });
     } finally {
       setLoading(false);
