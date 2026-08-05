@@ -80,6 +80,8 @@ interface DataContextType {
   // System Helpers
   resetToDefaultData: () => void;
   clearAllDataToEmpty: () => void;
+  exportDatabaseJSON: () => string;
+  importDatabaseJSON: (jsonStr: string) => { success: boolean; message: string };
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -977,6 +979,48 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetch('/api/clear-all-data', { method: 'POST' }).catch(() => {});
   };
 
+  const exportDatabaseJSON = () => {
+    const dbPayload = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      academyConfig,
+      students,
+      teachers,
+      classes,
+      attendances,
+      payments,
+      graduations,
+      beltRequests,
+      trainingLogs,
+      teacherObservations,
+    };
+    return JSON.stringify(dbPayload, null, 2);
+  };
+
+  const importDatabaseJSON = (jsonStr: string): { success: boolean; message: string } => {
+    try {
+      const data = JSON.parse(jsonStr);
+      if (!data || typeof data !== 'object') {
+        return { success: false, message: 'Arquivo de backup inválido ou corrompido.' };
+      }
+
+      if (data.students && Array.isArray(data.students)) setStudents(data.students);
+      if (data.teachers && Array.isArray(data.teachers)) setTeachers(data.teachers);
+      if (data.classes && Array.isArray(data.classes)) setClasses(data.classes);
+      if (data.attendances && Array.isArray(data.attendances)) setAttendances(data.attendances);
+      if (data.payments && Array.isArray(data.payments)) setPayments(data.payments);
+      if (data.graduations && Array.isArray(data.graduations)) setGraduations(data.graduations);
+      if (data.beltRequests && Array.isArray(data.beltRequests)) setBeltRequests(data.beltRequests);
+      if (data.trainingLogs && Array.isArray(data.trainingLogs)) setTrainingLogs(data.trainingLogs);
+      if (data.teacherObservations && Array.isArray(data.teacherObservations)) setTeacherObservations(data.teacherObservations);
+      if (data.academyConfig && typeof data.academyConfig === 'object') setAcademyConfig(data.academyConfig);
+
+      return { success: true, message: 'Banco de dados restaurado com sucesso do backup!' };
+    } catch (err: any) {
+      return { success: false, message: `Erro ao importar arquivo: ${err.message || 'Formato JSON inválido'}` };
+    }
+  };
+
   return (
     <DataContext.Provider value={{
       students,
@@ -1012,6 +1056,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateAcademyConfig,
       resetToDefaultData,
       clearAllDataToEmpty,
+      exportDatabaseJSON,
+      importDatabaseJSON,
     }}>
       {children}
     </DataContext.Provider>

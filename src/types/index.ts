@@ -194,6 +194,7 @@ export interface AcademyConfig {
   address: string;
   logoUrl: string;
   pixKey: string;
+  environmentMode?: 'HOMOLOGATION' | 'PRODUCTION';
   graduationCriteria: Record<BeltType, { classesPerStripe: number; monthsForNextBelt: number }>;
   supabaseConfig?: {
     url: string;

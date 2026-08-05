@@ -56,9 +56,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="w-8 h-8 rounded-lg object-contain bg-slate-950 p-0.5 border border-slate-700/80 shadow-xs"
           />
           <div>
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              {tabTitles[activeTab] || 'BJJCRON'}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                {tabTitles[activeTab] || 'BJJCRON'}
+              </h2>
+              {academyConfig.environmentMode === 'PRODUCTION' ? (
+                <span title="Ambiente de Produção com Banco Fixo" className="hidden xs:inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  🛡️ BANCO FIXO
+                </span>
+              ) : (
+                <span title="Ambiente de Homologação / Testes" className="hidden xs:inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                  🧪 HOMOLOGAÇÃO
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-slate-400 hidden sm:block">
               {academyConfig.fantasyName || academyConfig.name}
             </p>

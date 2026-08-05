@@ -164,6 +164,7 @@ export const INITIAL_ACADEMY_CONFIG: AcademyConfig = {
   address: 'Av. Paulista, 1500 - 3º Andar, São Paulo - SP',
   logoUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&q=80&w=200',
   pixKey: '12345678000190',
+  environmentMode: 'HOMOLOGATION',
   graduationCriteria: {
     BRANCA: { classesPerStripe: 30, monthsForNextBelt: 12 },
     CINZA: { classesPerStripe: 15, monthsForNextBelt: 6 },
