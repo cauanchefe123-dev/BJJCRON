@@ -6,6 +6,7 @@ import { Student, BeltType } from '../../types';
 import { DEFAULT_BLACK_GI_AVATAR, getStudentAvatar } from '../../constants/avatar';
 import { getTrainingTimeText } from '../../utils/trainingTime';
 import { Search, UserPlus, Award, Filter, ShieldCheck, MoreVertical, Trash2, Edit3, Phone, Mail, IdCard, UserCheck, Check, X, AlertCircle, Clock } from 'lucide-react';
+import { SendEmailModal } from './SendEmailModal';
 
 interface StudentListProps {
   onOpenAddModal: () => void;
@@ -26,6 +27,7 @@ export const StudentList: React.FC<StudentListProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [beltFilter, setBeltFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [emailStudent, setEmailStudent] = useState<Student | null>(null);
 
   const pendingStudents = students.filter(s => s.approvalStatus === 'PENDING');
 
@@ -268,8 +270,17 @@ export const StudentList: React.FC<StudentListProps> = ({
                         )}
 
                         <button
-                          onClick={() => onOpenGraduationModal(s)}
+                          onClick={() => setEmailStudent(s)}
                           className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1"
+                          title="Enviar E-mail para Aluno"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          E-mail
+                        </button>
+
+                        <button
+                          onClick={() => onOpenGraduationModal(s)}
+                          className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1"
                           title="Graduar / Graus"
                         >
                           <Award className="w-3.5 h-3.5" />
@@ -306,6 +317,14 @@ export const StudentList: React.FC<StudentListProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Send Email Modal */}
+      {emailStudent && (
+        <SendEmailModal
+          student={emailStudent}
+          onClose={() => setEmailStudent(null)}
+        />
+      )}
     </div>
   );
 };

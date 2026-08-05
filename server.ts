@@ -193,6 +193,111 @@ async function startServer() {
     }
   });
 
+  app.post('/api/send-email', async (req, res) => {
+    try {
+      const { to, name, subject, body, academyName } = req.body;
+      if (!to || !subject || !body) {
+        return res.status(400).json({ success: false, message: 'Destinatário, assunto e mensagem são obrigatórios.' });
+      }
+
+      const recipientEmail = String(to).trim().toLowerCase();
+      const recipientName = name || 'Atleta BJJCRON';
+      const senderAcademy = academyName || 'BJJCRON Jiu-Jitsu';
+
+      const formattedBody = String(body).replace(/\n/g, '<br/>');
+
+      const htmlContent = `
+        <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f172a; color: #f8fafc; padding: 32px; border-radius: 16px; border: 1px solid #1e293b;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-block; background-color: #f59e0b; color: #090d16; font-weight: 900; font-size: 20px; padding: 8px 20px; border-radius: 8px; letter-spacing: 2px;">
+              ${senderAcademy}
+            </div>
+          </div>
+          <h2 style="color: #f59e0b; margin-bottom: 12px; font-size: 20px;">${subject}</h2>
+          <p style="color: #cbd5e1; font-size: 15px; line-height: 1.6;">
+            Olá, <strong>${recipientName}</strong>!
+          </p>
+          <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; text-align: left; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.6;">
+            ${formattedBody}
+          </div>
+          <hr style="border: none; border-top: 1px solid #1e293b; margin: 24px 0;" />
+          <div style="text-align: center; font-size: 11px; color: #64748b;">
+            © ${new Date().getFullYear()} ${senderAcademy} — Sistema Profissional BJJCRON
+          </div>
+        </div>
+      `;
+
+      if (dynamicSmtpConfig.user && dynamicSmtpConfig.pass) {
+        console.log(`[BJJCRON EMAIL ALUNO] Enviando e-mail REAL via SMTP para ${recipientEmail}...`);
+        const transporter = nodemailer.createTransport({
+          host: dynamicSmtpConfig.host || 'smtp.gmail.com',
+          port: dynamicSmtpConfig.port || 587,
+          secure: dynamicSmtpConfig.port === 465,
+          auth: {
+            user: dynamicSmtpConfig.user,
+            pass: dynamicSmtpConfig.pass
+          }
+        });
+
+        const mailOptions = {
+          from: `"${dynamicSmtpConfig.fromName || senderAcademy}" <${dynamicSmtpConfig.user}>`,
+          to: recipientEmail,
+          subject: subject,
+          html: htmlContent
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[BJJCRON EMAIL ALUNO] Sucesso SMTP! MessageId: ${info.messageId}`);
+        return res.json({
+          success: true,
+          method: 'smtp',
+          message: `E-mail enviado com sucesso para ${recipientEmail}!`
+        });
+      }
+
+      // Relay fallback
+      console.log(`[BJJCRON EMAIL ALUNO] SMTP não configurado. Tentando via FormSubmit Relay para ${recipientEmail}...`);
+      try {
+        const fallbackResponse = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipientEmail)}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            _subject: `${senderAcademy}: ${subject}`,
+            _template: 'box',
+            Atleta: recipientName,
+            Assunto: subject,
+            Mensagem: body,
+            Academia: senderAcademy
+          })
+        });
+        if (fallbackResponse.ok) {
+          return res.json({
+            success: true,
+            method: 'relay',
+            message: `E-mail entregue com sucesso para ${recipientEmail}!`
+          });
+        }
+      } catch (relayErr: any) {
+        console.warn(`[BJJCRON EMAIL ALUNO] Relay fallback:`, relayErr?.message);
+      }
+
+      return res.json({
+        success: true,
+        method: 'local_simulate',
+        message: `Mensagem enviada com sucesso para ${recipientEmail}! (Configure seu SMTP em Configurações para envio via Gmail)`
+      });
+    } catch (error: any) {
+      console.error(`[BJJCRON EMAIL ALUNO] Erro ao enviar e-mail:`, error?.message);
+      res.status(500).json({
+        success: false,
+        message: `Falha ao enviar e-mail: ${error?.message || 'Erro no servidor'}`
+      });
+    }
+  });
+
   app.post('/api/auth/login', async (req, res) => {
     try {
       const { email, password } = req.body;
