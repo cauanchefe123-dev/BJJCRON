@@ -27,6 +27,14 @@ import {
   INITIAL_TEACHER_OBSERVATIONS,
   INITIAL_TRAINING_LOGS,
 } from '../data/mockData';
+import {
+  saveToFirestore,
+  removeFromFirestore,
+  saveConfigToFirestore,
+  subscribeFirestoreCollection,
+  subscribeFirestoreConfig,
+  seedInitialFirestoreData,
+} from '../lib/firebaseStore';
 
 interface DataContextType {
   students: Student[];
@@ -177,89 +185,85 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => { safeSave('bjjcron_teacher_observations', teacherObservations); }, [teacherObservations]);
   useEffect(() => { safeSave('bjjcron_academy_config', academyConfig); }, [academyConfig]);
 
-  // Sync real PostgreSQL backend data on startup (falls back automatically to localStorage if offline)
+  // Real-time Firestore Cloud Synchronization + Seed
   useEffect(() => {
-    let isMounted = true;
-    const fetchPostgresData = async () => {
-      try {
-        const [
-          resStudents,
-          resTeachers,
-          resClasses,
-          resAttendances,
-          resPayments,
-          resBeltRequests,
-          resTrainingLogs,
-          resTeacherObs,
-          resAcademyConfig,
-        ] = await Promise.all([
-          fetch('/api/students').catch(() => null),
-          fetch('/api/teachers').catch(() => null),
-          fetch('/api/classes').catch(() => null),
-          fetch('/api/attendances').catch(() => null),
-          fetch('/api/payments').catch(() => null),
-          fetch('/api/belt-requests').catch(() => null),
-          fetch('/api/training-logs').catch(() => null),
-          fetch('/api/teacher-observations').catch(() => null),
-          fetch('/api/academy-config').catch(() => null),
-        ]);
+    // Seed Firestore if empty
+    seedInitialFirestoreData({
+      students,
+      teachers,
+      classes,
+      attendances,
+      payments,
+      graduations,
+      beltRequests,
+      trainingLogs,
+      teacherObservations,
+      academyConfig,
+    });
 
-        if (!isMounted) return;
-
-        if (resStudents && resStudents.ok) {
-          const data = await resStudents.json();
-          if (Array.isArray(data)) {
-            setStudents(data);
-            localStorage.setItem('bjjcron_students', JSON.stringify(data));
-            window.dispatchEvent(new Event('bjjcron_students_updated'));
-          }
-        }
-        if (resTeachers && resTeachers.ok) {
-          const data = await resTeachers.json();
-          if (Array.isArray(data)) setTeachers(data);
-        }
-        if (resClasses && resClasses.ok) {
-          const data = await resClasses.json();
-          if (Array.isArray(data)) setClasses(data);
-        }
-        if (resAttendances && resAttendances.ok) {
-          const data = await resAttendances.json();
-          if (Array.isArray(data)) setAttendances(data);
-        }
-        if (resPayments && resPayments.ok) {
-          const data = await resPayments.json();
-          if (Array.isArray(data)) setPayments(data);
-        }
-        if (resBeltRequests && resBeltRequests.ok) {
-          const data = await resBeltRequests.json();
-          if (Array.isArray(data)) setBeltRequests(data);
-        }
-        if (resTrainingLogs && resTrainingLogs.ok) {
-          const data = await resTrainingLogs.json();
-          if (Array.isArray(data)) setTrainingLogs(data);
-        }
-        if (resTeacherObs && resTeacherObs.ok) {
-          const data = await resTeacherObs.json();
-          if (Array.isArray(data)) setTeacherObservations(data);
-        }
-        if (resAcademyConfig && resAcademyConfig.ok) {
-          const data = await resAcademyConfig.json();
-          if (data && data.name) {
-            setAcademyConfig(prev => ({
-              ...INITIAL_ACADEMY_CONFIG,
-              ...prev,
-              ...data,
-              graduationCriteria: data.graduationCriteria || prev.graduationCriteria || INITIAL_ACADEMY_CONFIG.graduationCriteria,
-            }));
-          }
-        }
-      } catch (err) {
-        console.warn('PostgreSQL sync fallback to localStorage offline-first:', err);
+    const unsubStudents = subscribeFirestoreCollection<Student>('students', (data) => {
+      if (data && data.length > 0) {
+        setStudents(data);
+        localStorage.setItem('bjjcron_students', JSON.stringify(data));
+        window.dispatchEvent(new Event('bjjcron_students_updated'));
       }
-    };
+    });
 
-    fetchPostgresData();
-    return () => { isMounted = false; };
+    const unsubTeachers = subscribeFirestoreCollection<Teacher>('teachers', (data) => {
+      if (data && data.length > 0) setTeachers(data);
+    });
+
+    const unsubClasses = subscribeFirestoreCollection<BJJClass>('classes', (data) => {
+      if (data && data.length > 0) setClasses(data);
+    });
+
+    const unsubAttendances = subscribeFirestoreCollection<AttendanceRecord>('attendances', (data) => {
+      if (data && data.length > 0) setAttendances(data);
+    });
+
+    const unsubPayments = subscribeFirestoreCollection<PaymentRecord>('payments', (data) => {
+      if (data && data.length > 0) setPayments(data);
+    });
+
+    const unsubGraduations = subscribeFirestoreCollection<Graduation>('graduations', (data) => {
+      if (data && data.length > 0) setGraduations(data);
+    });
+
+    const unsubBeltRequests = subscribeFirestoreCollection<BeltChangeRequest>('beltRequests', (data) => {
+      if (data && data.length > 0) setBeltRequests(data);
+    });
+
+    const unsubTrainingLogs = subscribeFirestoreCollection<TrainingLog>('trainingLogs', (data) => {
+      if (data && data.length > 0) setTrainingLogs(data);
+    });
+
+    const unsubTeacherObs = subscribeFirestoreCollection<TeacherObservation>('teacherObservations', (data) => {
+      if (data && data.length > 0) setTeacherObservations(data);
+    });
+
+    const unsubConfig = subscribeFirestoreConfig((data) => {
+      if (data) {
+        setAcademyConfig(prev => ({
+          ...INITIAL_ACADEMY_CONFIG,
+          ...prev,
+          ...data,
+          graduationCriteria: data.graduationCriteria || prev.graduationCriteria || INITIAL_ACADEMY_CONFIG.graduationCriteria,
+        }));
+      }
+    });
+
+    return () => {
+      unsubStudents();
+      unsubTeachers();
+      unsubClasses();
+      unsubAttendances();
+      unsubPayments();
+      unsubGraduations();
+      unsubBeltRequests();
+      unsubTrainingLogs();
+      unsubTeacherObs();
+      unsubConfig();
+    };
   }, []);
 
   // Sync state when students or users are updated in localStorage by AuthContext or another tab
@@ -306,6 +310,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('students', newStudent);
 
     // Automatically create User in bjjcron_users so student can log in / activate immediately with their email
     if (studentData.email) {
@@ -351,6 +356,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setPayments(prev => [newPayment, ...prev]);
+    saveToFirestore('payments', newPayment);
 
     fetch('/api/students', {
       method: 'POST',
@@ -368,11 +374,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateStudent = (id: string, updates: Partial<Student>) => {
+    let updatedStudent: Student | null = null;
     setStudents(prev => {
-      const updated = prev.map(s => s.id === id ? { ...s, ...updates } : s);
+      const updated = prev.map(s => {
+        if (s.id === id) {
+          updatedStudent = { ...s, ...updates };
+          return updatedStudent;
+        }
+        return s;
+      });
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
       return updated;
     });
+    if (updatedStudent) saveToFirestore('students', updatedStudent);
 
     fetch(`/api/students/${encodeURIComponent(id)}`, {
       method: 'PUT',
@@ -408,6 +422,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
       return updated;
     });
+    removeFromFirestore('students', id);
     fetch(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
     window.dispatchEvent(new Event('bjjcron_students_updated'));
   };
@@ -434,18 +449,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setGraduations(prev => [newGraduation, ...prev]);
+    saveToFirestore('graduations', newGraduation);
+
+    const updatedStudentObj = {
+      ...student,
+      belt: newBelt,
+      stripes: newStripes,
+      classesSinceLastGraduation: 0,
+    };
 
     setStudents(prev => prev.map(s => {
       if (s.id === studentId) {
-        return {
-          ...s,
-          belt: newBelt,
-          stripes: newStripes,
-          classesSinceLastGraduation: 0,
-        };
+        return updatedStudentObj;
       }
       return s;
     }));
+    saveToFirestore('students', updatedStudentObj);
 
     fetch(`/api/students/${encodeURIComponent(studentId)}`, {
       method: 'PUT',
@@ -496,6 +515,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_belt_requests', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('beltRequests', newRequest);
 
     fetch('/api/belt-requests', {
       method: 'POST',
@@ -522,20 +542,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const reviewedAt = new Date().toISOString().split('T')[0];
+    const updatedReq = {
+      ...req,
+      status: 'APPROVED' as const,
+      reviewedBy: reviewerName,
+      reviewedAt,
+    };
     setBeltRequests(prev => {
-      const updated = prev.map(r =>
-        r.id === requestId
-          ? {
-              ...r,
-              status: 'APPROVED',
-              reviewedBy: reviewerName,
-              reviewedAt,
-            }
-          : r
-      );
+      const updated = prev.map(r => r.id === requestId ? updatedReq : r);
       localStorage.setItem('bjjcron_belt_requests', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('beltRequests', updatedReq);
 
     fetch(`/api/belt-requests/${encodeURIComponent(requestId)}`, {
       method: 'PUT',
@@ -549,21 +567,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const rejectBeltChange = (requestId: string, reviewerName: string) => {
+    const req = beltRequests.find(r => r.id === requestId);
+    if (!req) return;
+
     const reviewedAt = new Date().toISOString().split('T')[0];
+    const updatedReq = {
+      ...req,
+      status: 'REJECTED' as const,
+      reviewedBy: reviewerName,
+      reviewedAt,
+    };
+
     setBeltRequests(prev => {
-      const updated = prev.map(r =>
-        r.id === requestId
-          ? {
-              ...r,
-              status: 'REJECTED',
-              reviewedBy: reviewerName,
-              reviewedAt,
-            }
-          : r
-      );
+      const updated = prev.map(r => r.id === requestId ? updatedReq : r);
       localStorage.setItem('bjjcron_belt_requests', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('beltRequests', updatedReq);
 
     fetch(`/api/belt-requests/${encodeURIComponent(requestId)}`, {
       method: 'PUT',
@@ -587,6 +607,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_teachers', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('teachers', newTeacher);
 
     fetch('/api/teachers', {
       method: 'POST',
@@ -598,11 +619,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateTeacher = (id: string, updates: Partial<Teacher>) => {
+    let updatedTeacher: Teacher | null = null;
     setTeachers(prev => {
-      const updated = prev.map(t => t.id === id ? { ...t, ...updates } : t);
+      const updated = prev.map(t => {
+        if (t.id === id) {
+          updatedTeacher = { ...t, ...updates };
+          return updatedTeacher;
+        }
+        return t;
+      });
       localStorage.setItem('bjjcron_teachers', JSON.stringify(updated));
       return updated;
     });
+    if (updatedTeacher) saveToFirestore('teachers', updatedTeacher);
 
     fetch(`/api/teachers/${encodeURIComponent(id)}`, {
       method: 'PUT',
@@ -617,6 +646,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_teachers', JSON.stringify(updated));
       return updated;
     });
+    removeFromFirestore('teachers', id);
 
     fetch(`/api/teachers/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
   };
@@ -632,6 +662,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_classes', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('classes', newClass);
 
     fetch('/api/classes', {
       method: 'POST',
@@ -641,11 +672,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateClass = (id: string, updates: Partial<BJJClass>) => {
+    let updatedClass: BJJClass | null = null;
     setClasses(prev => {
-      const updated = prev.map(c => c.id === id ? { ...c, ...updates } : c);
+      const updated = prev.map(c => {
+        if (c.id === id) {
+          updatedClass = { ...c, ...updates };
+          return updatedClass;
+        }
+        return c;
+      });
       localStorage.setItem('bjjcron_classes', JSON.stringify(updated));
       return updated;
     });
+    if (updatedClass) saveToFirestore('classes', updatedClass);
 
     fetch(`/api/classes/${encodeURIComponent(id)}`, {
       method: 'PUT',
@@ -660,6 +699,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_classes', JSON.stringify(updated));
       return updated;
     });
+    removeFromFirestore('classes', id);
 
     fetch(`/api/classes/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
   };
@@ -724,6 +764,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_attendances', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('attendances', newRecord);
 
     fetch('/api/attendances', {
       method: 'POST',
@@ -733,9 +774,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Update student's class counter
     setStudents(prev => {
+      let updatedStudent: Student | null = null;
       const updated = prev.map(s => {
         if (s.id === student.id) {
-          const updatedStudent = {
+          updatedStudent = {
             ...s,
             totalClassesAttended: s.totalClassesAttended + 1,
             classesSinceLastGraduation: s.classesSinceLastGraduation + 1,
@@ -753,6 +795,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return s;
       });
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
+      if (updatedStudent) saveToFirestore('students', updatedStudent);
       return updated;
     });
 
@@ -770,12 +813,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('bjjcron_attendances', JSON.stringify(updated));
         return updated;
       });
+      removeFromFirestore('attendances', id);
       fetch(`/api/attendances/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
 
       setStudents(prev => {
+        let updatedStudent: Student | null = null;
         const updated = prev.map(s => {
           if (s.id === record.studentId) {
-            const updatedStudent = {
+            updatedStudent = {
               ...s,
               totalClassesAttended: Math.max(0, s.totalClassesAttended - 1),
               classesSinceLastGraduation: Math.max(0, s.classesSinceLastGraduation - 1),
@@ -793,6 +838,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return s;
         });
         localStorage.setItem('bjjcron_students', JSON.stringify(updated));
+        if (updatedStudent) saveToFirestore('students', updatedStudent);
         return updated;
       });
     }
@@ -809,6 +855,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_payments', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('payments', newPayment);
 
     fetch('/api/payments', {
       method: 'POST',
@@ -819,6 +866,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const markPaymentAsPaid = (paymentId: string, method: 'PIX' | 'CARTAO' | 'DINHEIRO' | 'BOLETO') => {
     const todayStr = new Date().toISOString().split('T')[0];
+    let updatedPayment: PaymentRecord | null = null;
     setPayments(prev => {
       const updated = prev.map(p => {
         if (p.id === paymentId) {
@@ -832,21 +880,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }),
           }).catch(() => {});
 
-          return {
+          updatedPayment = {
             ...p,
             status: 'PAGO' as PaymentStatus,
             paymentDate: todayStr,
             paymentMethod: method,
           };
+          return updatedPayment;
         }
         return p;
       });
       localStorage.setItem('bjjcron_payments', JSON.stringify(updated));
       return updated;
     });
+    if (updatedPayment) saveToFirestore('payments', updatedPayment);
 
     setStudents(sPrev => {
       const targetPayment = payments.find(p => p.id === paymentId);
+      let updatedStudent: Student | null = null;
       const updated = sPrev.map(st => {
         if (targetPayment && st.id === targetPayment.studentId) {
           fetch(`/api/students/${encodeURIComponent(st.id)}`, {
@@ -857,11 +908,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               lastPaymentDate: todayStr,
             }),
           }).catch(() => {});
-          return { ...st, paymentStatus: 'PAGO' as PaymentStatus, lastPaymentDate: todayStr };
+          updatedStudent = { ...st, paymentStatus: 'PAGO' as PaymentStatus, lastPaymentDate: todayStr };
+          return updatedStudent;
         }
         return st;
       });
       localStorage.setItem('bjjcron_students', JSON.stringify(updated));
+      if (updatedStudent) saveToFirestore('students', updatedStudent);
       return updated;
     });
   };
@@ -877,6 +930,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_training_logs', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('trainingLogs', newLog);
 
     fetch('/api/training-logs', {
       method: 'POST',
@@ -900,6 +954,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_teacher_observations', JSON.stringify(updated));
       return updated;
     });
+    saveToFirestore('teacherObservations', newObs);
 
     fetch('/api/teacher-observations', {
       method: 'POST',
@@ -914,6 +969,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_teacher_observations', JSON.stringify(updated));
       return updated;
     });
+    removeFromFirestore('teacherObservations', id);
 
     fetch(`/api/teacher-observations/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
   };
@@ -922,6 +978,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateAcademyConfig = (updates: Partial<AcademyConfig>) => {
     setAcademyConfig(prev => {
       const updated = { ...prev, ...updates };
+      saveConfigToFirestore(updated);
       fetch('/api/academy-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

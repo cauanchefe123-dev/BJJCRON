@@ -1,0 +1,114 @@
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  getDocs,
+  writeBatch
+} from 'firebase/firestore';
+import { db } from './firebase';
+
+export async function saveToFirestore<T extends { id: string }>(collectionName: string, item: T) {
+  try {
+    const ref = doc(db, collectionName, item.id);
+    await setDoc(ref, item, { merge: true });
+  } catch (err) {
+    console.warn(`[Firestore] Erro ao salvar em ${collectionName}:`, err);
+  }
+}
+
+export async function removeFromFirestore(collectionName: string, id: string) {
+  try {
+    const ref = doc(db, collectionName, id);
+    await deleteDoc(ref);
+  } catch (err) {
+    console.warn(`[Firestore] Erro ao remover de ${collectionName}:`, err);
+  }
+}
+
+export async function saveConfigToFirestore(configData: any) {
+  try {
+    const ref = doc(db, 'config', 'academyConfig');
+    await setDoc(ref, configData, { merge: true });
+  } catch (err) {
+    console.warn('[Firestore] Erro ao salvar configurações da academia:', err);
+  }
+}
+
+export function subscribeFirestoreCollection<T>(
+  collectionName: string, 
+  callback: (data: T[]) => void
+) {
+  try {
+    const colRef = collection(db, collectionName);
+    return onSnapshot(colRef, (snapshot) => {
+      if (!snapshot.empty) {
+        const items: T[] = snapshot.docs.map(doc => doc.data() as T);
+        callback(items);
+      }
+    }, (error) => {
+      console.warn(`[Firestore] Erro de escuta na coleção ${collectionName}:`, error);
+    });
+  } catch (err) {
+    console.warn(`[Firestore] Falha ao iniciar escuta de ${collectionName}:`, err);
+    return () => {};
+  }
+}
+
+export function subscribeFirestoreConfig(callback: (config: any) => void) {
+  try {
+    const docRef = doc(db, 'config', 'academyConfig');
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        callback(docSnap.data());
+      }
+    }, (error) => {
+      console.warn('[Firestore] Erro de escuta nas configurações:', error);
+    });
+  } catch (err) {
+    console.warn('[Firestore] Falha ao iniciar escuta nas configurações:', err);
+    return () => {};
+  }
+}
+
+export async function seedInitialFirestoreData(data: {
+  students: any[];
+  teachers: any[];
+  classes: any[];
+  attendances: any[];
+  payments: any[];
+  graduations: any[];
+  beltRequests: any[];
+  trainingLogs: any[];
+  teacherObservations: any[];
+  academyConfig: any;
+}) {
+  try {
+    // Check if Firestore already has students
+    const snap = await getDocs(collection(db, 'students'));
+    if (!snap.empty) {
+      console.log('[Firestore] Banco em nuvem já contém dados salvos.');
+      return;
+    }
+
+    console.log('[Firestore] Inicializando primeira carga no banco em nuvem...');
+    const batch = writeBatch(db);
+
+    data.students.forEach(item => batch.set(doc(db, 'students', item.id), item));
+    data.teachers.forEach(item => batch.set(doc(db, 'teachers', item.id), item));
+    data.classes.forEach(item => batch.set(doc(db, 'classes', item.id), item));
+    data.attendances.forEach(item => batch.set(doc(db, 'attendances', item.id), item));
+    data.payments.forEach(item => batch.set(doc(db, 'payments', item.id), item));
+    data.graduations.forEach(item => batch.set(doc(db, 'graduations', item.id), item));
+    data.beltRequests.forEach(item => batch.set(doc(db, 'beltRequests', item.id), item));
+    data.trainingLogs.forEach(item => batch.set(doc(db, 'trainingLogs', item.id), item));
+    data.teacherObservations.forEach(item => batch.set(doc(db, 'teacherObservations', item.id), item));
+    batch.set(doc(db, 'config', 'academyConfig'), data.academyConfig);
+
+    await batch.commit();
+    console.log('[Firestore] Dados iniciais salvos com sucesso na nuvem!');
+  } catch (err) {
+    console.warn('[Firestore] Erro ao popular carga inicial na nuvem:', err);
+  }
+}

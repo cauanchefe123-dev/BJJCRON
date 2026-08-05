@@ -2,11 +2,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole, BeltType, AgeCategory, WeightCategory } from '../types';
 import { INITIAL_USERS } from '../data/mockData';
 import { DEFAULT_BLACK_GI_AVATAR } from '../constants/avatar';
+import { subscribeFirestoreCollection, saveToFirestore } from '../lib/firebaseStore';
 
 export interface LoginResult {
   success: boolean;
   message?: string;
-  reason?: 'PENDING' | 'REJECTED' | 'NEEDS_FIRST_ACCESS' | 'INVALID_CREDENTIALS' | 'NOT_FOUND';
+  reason?: 'PENDING' | 'REJECTED' | 'NEEDS_FIRST_ACCESS' | 'INVALID_CREDENTIALS' | 'NOT_FOUND' | 'WRONG_PASSWORD';
   user?: User;
 }
 
@@ -151,6 +152,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchUsersFromApi();
     const timer = setInterval(fetchUsersFromApi, 3000);
 
+    const unsubFirestoreUsers = subscribeFirestoreCollection<User>('users', (cloudUsers) => {
+      if (cloudUsers && cloudUsers.length > 0) {
+        setUsers(prev => {
+          // Merge admin and existing if needed, ensuring INITIAL_USERS exist
+          const merged = [...cloudUsers];
+          INITIAL_USERS.forEach(initU => {
+            if (!merged.some(u => u.email.trim().toLowerCase() === initU.email.trim().toLowerCase() || u.id === initU.id)) {
+              merged.push(initU);
+            }
+          });
+          localStorage.setItem('bjjcron_users', JSON.stringify(merged));
+          return merged;
+        });
+      }
+    });
+
     const syncFromStorage = () => {
       fetchUsersFromApi();
       const saved = localStorage.getItem('bjjcron_users');
@@ -165,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('bjjcron_students_updated', syncFromStorage);
     return () => {
       clearInterval(timer);
+      unsubFirestoreUsers();
       window.removeEventListener('storage', syncFromStorage);
       window.removeEventListener('bjjcron_users_updated', syncFromStorage);
       window.removeEventListener('bjjcron_students_updated', syncFromStorage);

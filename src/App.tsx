@@ -153,7 +153,13 @@ function MainApp() {
               {activeTab === 'students-dashboard' && (
                 <AdminStudentDashboardView
                   onNavigate={setActiveTab}
-                  onOpenPixModal={(p) => setPixModalPayment(p)}
+                  onOpenPixModal={(p) => {
+                    if (typeof p === 'string') {
+                      handleOpenPixForId(p);
+                    } else {
+                      setPixModalPayment(p);
+                    }
+                  }}
                 />
               )}
 
