@@ -200,29 +200,69 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({ student, onClose
             />
           </div>
 
-          {/* Actions */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-800">
+          {/* Direct Gmail/Email Client Option */}
+          <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-2">
+            <div className="text-xs text-amber-200">
+              <strong className="block text-amber-300 font-bold">💡 Envio Garantido via Gmail:</strong>
+              <span className="text-[11px] text-slate-300">Abre seu Gmail com o e-mail do aluno e mensagem preenchidos para envio imediato.</span>
+            </div>
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all"
+              onClick={() => {
+                if (!toEmail.trim()) {
+                  setFeedback({ type: 'error', message: 'Por favor, insira o e-mail do aluno.' });
+                  return;
+                }
+                const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.open(gmailUrl, '_blank');
+                setFeedback({
+                  type: 'success',
+                  message: 'Janela do Gmail aberta! Clique em "Enviar" no seu Gmail para disparar o e-mail.',
+                });
+              }}
+              className="shrink-0 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md transition-all"
             >
-              Cancelar
+              <Send className="w-3.5 h-3.5" />
+              Abrir no Gmail
             </button>
+          </div>
+
+          {/* Actions */}
+          <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-800">
             <button
-              type="submit"
-              disabled={loading}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black flex items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 transition-all"
+              type="button"
+              onClick={() => {
+                const mailtoUrl = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.location.href = mailtoUrl;
+              }}
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
             >
-              {loading ? (
-                <span>Enviando...</span>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Enviar E-mail Agora
-                </>
-              )}
+              <Mail className="w-3.5 h-3.5" />
+              Outro E-mail (Outlook/Apple)
             </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all"
+              >
+                Fechar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black flex items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 transition-all"
+              >
+                {loading ? (
+                  <span>Enviando...</span>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Enviar pelo Servidor
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

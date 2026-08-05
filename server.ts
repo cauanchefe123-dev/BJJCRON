@@ -571,54 +571,23 @@ async function startServer() {
   app.get('/api/users', async (req, res) => {
     try {
       let all = await db.select().from(schema.users).orderBy(desc(schema.users.id));
-      let neededSeed = false;
-      for (const u of INITIAL_USERS) {
-        if (!all.some(existing => existing.email?.toLowerCase() === u.email.toLowerCase())) {
-          neededSeed = true;
+      if (all.length === 0) {
+        const cauanAdmin = INITIAL_USERS.find(u => u.email.includes('cauanchefe123'));
+        if (cauanAdmin) {
           await db.insert(schema.users).values({
-            uid: `uid-${u.id}-${Date.now()}`,
-            name: u.name,
-            email: u.email,
-            role: u.role || 'ALUNO',
-            avatarUrl: u.avatarUrl || '',
-            studentId: u.studentId ? String(u.studentId) : null,
-            phone: u.phone || '',
-            approvalStatus: u.approvalStatus || 'APPROVED',
-            password: u.password || '123',
-            isActivated: u.isActivated ?? true,
+            uid: `uid-cauan-${Date.now()}`,
+            name: cauanAdmin.name,
+            email: cauanAdmin.email,
+            role: 'ADMIN',
+            avatarUrl: cauanAdmin.avatarUrl || '',
+            studentId: null,
+            phone: cauanAdmin.phone || '',
+            approvalStatus: 'APPROVED',
+            password: cauanAdmin.password || '123',
+            isActivated: true,
           }).onConflictDoNothing();
+          all = await db.select().from(schema.users).orderBy(desc(schema.users.id));
         }
-      }
-
-      // Sincroniza automaticamente qualquer Aluno/Aluna cadastrado na tabela de alunos para a tabela de usuários
-      try {
-        const allStudents = await db.select().from(schema.students);
-        for (const st of allStudents) {
-          if (st.email && st.email.trim()) {
-            const cleanEmail = st.email.trim().toLowerCase();
-            if (!all.some(existing => existing.email && existing.email.toLowerCase() === cleanEmail)) {
-              neededSeed = true;
-              await db.insert(schema.users).values({
-                uid: `uid-std-${st.id}-${Date.now()}`,
-                name: st.name,
-                email: cleanEmail,
-                role: 'ALUNO',
-                avatarUrl: st.photoUrl || '',
-                studentId: String(st.id),
-                phone: st.phone || '',
-                approvalStatus: st.approvalStatus || 'APPROVED',
-                password: '123',
-                isActivated: false,
-              }).onConflictDoNothing();
-            }
-          }
-        }
-      } catch (syncErr) {
-        console.warn('Erro na sincronização de alunos para usuários:', syncErr);
-      }
-
-      if (neededSeed) {
-        all = await db.select().from(schema.users).orderBy(desc(schema.users.id));
       }
       res.json(all.map(formatUserFromDb));
     } catch (err: any) {
@@ -692,43 +661,10 @@ async function startServer() {
   app.get('/api/students', async (req, res) => {
     try {
       const all = await db.select().from(schema.students).orderBy(desc(schema.students.id));
-      if (all.length === 0) {
-        // Automatically seed sample students if table is empty
-        for (const s of INITIAL_STUDENTS) {
-          await db.insert(schema.students).values({
-            registrationNumber: s.registrationNumber,
-            name: s.name,
-            email: s.email,
-            phone: s.phone,
-            cpf: s.cpf,
-            birthDate: s.birthDate,
-            photoUrl: s.photoUrl,
-            belt: s.belt,
-            stripes: s.stripes,
-            startDate: s.startDate,
-            totalClassesAttended: s.totalClassesAttended,
-            classesSinceLastGraduation: s.classesSinceLastGraduation,
-            weightCategory: s.weightCategory,
-            ageCategory: s.ageCategory,
-            active: s.active,
-            notes: s.notes,
-            emergencyContact: s.emergencyContact,
-            planName: s.planName,
-            planPrice: s.planPrice,
-            paymentDueDateDay: s.paymentDueDateDay,
-            paymentStatus: s.paymentStatus,
-            lastPaymentDate: s.lastPaymentDate,
-            qrCodeToken: s.qrCodeToken,
-            approvalStatus: s.approvalStatus || 'APPROVED',
-          }).onConflictDoNothing();
-        }
-        const seeded = await db.select().from(schema.students).orderBy(desc(schema.students.id));
-        return res.json(seeded.map(formatStudentFromDb));
-      }
       res.json(all.map(formatStudentFromDb));
     } catch (err: any) {
       console.warn('Postgres /api/students fallback:', err?.message);
-      res.json(INITIAL_STUDENTS);
+      res.json([]);
     }
   });
 
@@ -869,29 +805,10 @@ async function startServer() {
   app.get('/api/teachers', async (req, res) => {
     try {
       const all = await db.select().from(schema.teachers).orderBy(desc(schema.teachers.id));
-      if (all.length === 0) {
-        for (const t of INITIAL_TEACHERS) {
-          await db.insert(schema.teachers).values({
-            name: t.name,
-            email: t.email,
-            phone: t.phone,
-            belt: t.belt,
-            degrees: t.degrees,
-            specialty: t.specialty,
-            cref: t.cref,
-            photoUrl: t.photoUrl,
-            bio: t.bio,
-            active: t.active,
-            startDate: t.startDate,
-          }).onConflictDoNothing();
-        }
-        const seeded = await db.select().from(schema.teachers).orderBy(desc(schema.teachers.id));
-        return res.json(seeded.map(formatTeacherFromDb));
-      }
       res.json(all.map(formatTeacherFromDb));
     } catch (err: any) {
       console.warn('Postgres /api/teachers fallback:', err?.message);
-      res.json(INITIAL_TEACHERS);
+      res.json([]);
     }
   });
 
@@ -948,27 +865,9 @@ async function startServer() {
   app.get('/api/classes', async (req, res) => {
     try {
       const all = await db.select().from(schema.classes);
-      if (all.length === 0) {
-        for (const c of INITIAL_CLASSES) {
-          await db.insert(schema.classes).values({
-            title: c.title,
-            professorId: c.professorId,
-            professorName: c.professorName,
-            daysOfWeek: JSON.stringify(c.daysOfWeek),
-            time: c.time,
-            durationMinutes: c.durationMinutes,
-            category: c.category,
-            maxCapacity: c.maxCapacity,
-            active: c.active,
-            description: c.description,
-          }).onConflictDoNothing();
-        }
-        const seeded = await db.select().from(schema.classes);
-        return res.json(seeded.map(formatClassFromDb));
-      }
       res.json(all.map(formatClassFromDb));
     } catch (err: any) {
-      res.json(INITIAL_CLASSES);
+      res.json([]);
     }
   });
 
@@ -1024,25 +923,9 @@ async function startServer() {
   app.get('/api/attendances', async (req, res) => {
     try {
       const all = await db.select().from(schema.attendances).orderBy(desc(schema.attendances.id));
-      if (all.length === 0) {
-        for (const a of INITIAL_ATTENDANCE) {
-          await db.insert(schema.attendances).values({
-            studentId: a.studentId,
-            studentName: a.studentName,
-            classId: a.classId,
-            className: a.className,
-            date: a.date,
-            timestamp: a.timestamp,
-            method: a.method,
-            verifiedBy: a.verifiedBy,
-          }).onConflictDoNothing();
-        }
-        const seeded = await db.select().from(schema.attendances).orderBy(desc(schema.attendances.id));
-        return res.json(seeded.map(formatAttendanceFromDb));
-      }
       res.json(all.map(formatAttendanceFromDb));
     } catch (err: any) {
-      res.json(INITIAL_ATTENDANCE);
+      res.json([]);
     }
   });
 
@@ -1083,27 +966,9 @@ async function startServer() {
   app.get('/api/payments', async (req, res) => {
     try {
       const all = await db.select().from(schema.payments).orderBy(desc(schema.payments.id));
-      if (all.length === 0) {
-        for (const p of INITIAL_PAYMENTS) {
-          await db.insert(schema.payments).values({
-            studentId: p.studentId,
-            studentName: p.studentName,
-            amount: p.amount,
-            dueDate: p.dueDate,
-            paymentDate: p.paymentDate,
-            status: p.status,
-            paymentMethod: p.paymentMethod,
-            referenceMonth: p.referenceMonth,
-            receiptUrl: p.receiptUrl,
-            pixCode: p.pixCode,
-          }).onConflictDoNothing();
-        }
-        const seeded = await db.select().from(schema.payments).orderBy(desc(schema.payments.id));
-        return res.json(seeded.map(formatPaymentFromDb));
-      }
       res.json(all.map(formatPaymentFromDb));
     } catch (err: any) {
-      res.json(INITIAL_PAYMENTS);
+      res.json([]);
     }
   });
 
@@ -1159,28 +1024,9 @@ async function startServer() {
   app.get('/api/belt-requests', async (req, res) => {
     try {
       const all = await db.select().from(schema.beltRequests).orderBy(desc(schema.beltRequests.id));
-      if (all.length === 0) {
-        for (const b of INITIAL_BELT_REQUESTS) {
-          await db.insert(schema.beltRequests).values({
-            studentId: b.studentId,
-            studentName: b.studentName,
-            currentBelt: b.currentBelt,
-            currentStripes: b.currentStripes,
-            requestedBelt: b.requestedBelt,
-            requestedStripes: b.requestedStripes,
-            requestDate: b.requestDate,
-            notes: b.notes,
-            status: b.status,
-            reviewedBy: (b as any).reviewedBy || null,
-            reviewedAt: (b as any).reviewedAt || null,
-          }).onConflictDoNothing();
-        }
-        const seeded = await db.select().from(schema.beltRequests).orderBy(desc(schema.beltRequests.id));
-        return res.json(seeded.map(formatBeltRequestFromDb));
-      }
       res.json(all.map(formatBeltRequestFromDb));
     } catch (err: any) {
-      res.json(INITIAL_BELT_REQUESTS);
+      res.json([]);
     }
   });
 
@@ -1235,24 +1081,9 @@ async function startServer() {
   app.get('/api/training-logs', async (req, res) => {
     try {
       const all = await db.select().from(schema.trainingLogs).orderBy(desc(schema.trainingLogs.id));
-      if (all.length === 0) {
-        for (const l of INITIAL_TRAINING_LOGS) {
-          await db.insert(schema.trainingLogs).values({
-            studentId: l.studentId,
-            date: l.date,
-            durationMinutes: l.durationMinutes,
-            techniquesLearned: JSON.stringify(l.techniquesLearned),
-            roundsCount: l.roundsCount,
-            notes: l.notes,
-            moodRating: l.moodRating,
-          }).onConflictDoNothing();
-        }
-        const seeded = await db.select().from(schema.trainingLogs).orderBy(desc(schema.trainingLogs.id));
-        return res.json(seeded.map(formatTrainingLogFromDb));
-      }
       res.json(all.map(formatTrainingLogFromDb));
     } catch (err: any) {
-      res.json(INITIAL_TRAINING_LOGS);
+      res.json([]);
     }
   });
 
@@ -1292,25 +1123,9 @@ async function startServer() {
   app.get('/api/teacher-observations', async (req, res) => {
     try {
       const all = await db.select().from(schema.teacherObservations).orderBy(desc(schema.teacherObservations.id));
-      if (all.length === 0) {
-        for (const o of INITIAL_TEACHER_OBSERVATIONS) {
-          await db.insert(schema.teacherObservations).values({
-            studentId: o.studentId,
-            studentName: o.studentName || '',
-            teacherId: o.teacherId,
-            teacherName: o.teacherName,
-            date: o.date,
-            title: o.title,
-            content: o.content,
-            category: o.category,
-          }).onConflictDoNothing();
-        }
-        const seeded = await db.select().from(schema.teacherObservations).orderBy(desc(schema.teacherObservations.id));
-        return res.json(seeded.map(formatObservationFromDb));
-      }
       res.json(all.map(formatObservationFromDb));
     } catch (err: any) {
-      res.json(INITIAL_TEACHER_OBSERVATIONS);
+      res.json([]);
     }
   });
 
