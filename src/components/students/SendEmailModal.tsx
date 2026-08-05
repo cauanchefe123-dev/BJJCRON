@@ -75,25 +75,25 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({ student, onClose
       });
 
       const data = await response.json().catch(() => ({
-        success: true,
-        message: 'E-mail e comunicado registrados com sucesso!',
+        success: false,
+        message: 'Não foi possível ler a resposta do servidor.',
       }));
 
-      if (data?.success) {
+      if (response.ok && data?.success) {
         setFeedback({
           type: 'success',
-          message: data.message || `E-mail enviado com sucesso para ${toEmail}!`,
+          message: data.message || `E-mail enviado com SUCESSO via Gmail para ${toEmail}!`,
         });
       } else {
         setFeedback({
-          type: 'success',
-          message: `Comunicado gerado com sucesso para ${student.name}! Clique em "Abrir no Gmail" para disparar da sua conta.`,
+          type: 'error',
+          message: data?.message || 'Falha ao enviar e-mail pelo servidor. Verifique suas configurações em Configurações > Servidor de E-mail ou use o botão amarelo "Abrir no Gmail" abaixo.',
         });
       }
     } catch (err: any) {
       setFeedback({
-        type: 'success',
-        message: `Comunicado e notificação para ${student.name} registrados com sucesso no sistema!`,
+        type: 'error',
+        message: 'Falha de comunicação com o servidor. Utilize o botão "Abrir no Gmail" abaixo para enviar diretamente de sua conta.',
       });
     } finally {
       setLoading(false);

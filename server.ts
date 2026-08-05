@@ -99,72 +99,93 @@ async function startServer() {
       }
 
       const isGmail = smtpHost.includes('gmail');
-      const transporter = nodemailer.createTransport(
-        isGmail
-          ? {
-              service: 'gmail',
-              auth: { user: smtpUser, pass: smtpPass },
-              connectionTimeout: 5000,
-              greetingTimeout: 5000,
-              socketTimeout: 6000,
-              tls: { rejectUnauthorized: false }
-            }
-          : {
-              host: smtpHost,
-              port: smtpPort,
-              secure: smtpPort === 465,
-              auth: { user: smtpUser, pass: smtpPass },
-              connectionTimeout: 5000,
-              greetingTimeout: 5000,
-              socketTimeout: 6000,
-              tls: { rejectUnauthorized: false }
-            }
-      );
+      const cleanPass = smtpPass.trim().replace(/\s+/g, '');
 
-      const targetRecipient = (testEmail || smtpUser).trim();
+      // Try Port 465 (SSL/TLS) first, then Port 587 (STARTTLS)
+      let sendResult: any = null;
+      let lastError: any = null;
 
-      await transporter.sendMail({
-        from: `"${senderName}" <${smtpUser}>`,
-        to: targetRecipient,
-        subject: '✅ BJJCRON — Conexão de E-mail Testada com Sucesso!',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 28px; border-radius: 16px; border: 1px solid #334155;">
-            <h2 style="color: #f59e0b; margin-top: 0; font-size: 20px;">✓ Servidor de E-mail Ativo!</h2>
-            <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-              O sistema <strong>BJJCRON</strong> conectou com sucesso à sua conta do Gmail (<strong>${smtpUser}</strong>).
-            </p>
-            <div style="background: #1e293b; border: 1px solid #10b981; padding: 16px; border-radius: 12px; margin: 16px 0; color: #10b981; font-weight: bold; font-size: 13px;">
-              ✓ Disparos automáticos ativados para mensalidades, cobranças e avisos aos atletas.
-            </div>
-            <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
-            <span style="font-size: 11px; color: #64748b;">E-mail gerado pelo BJJCRON em ${new Date().toLocaleString('pt-BR')}</span>
-          </div>
-        `
-      });
+      const attemptPorts = isGmail
+        ? [
+            { host: 'smtp.gmail.com', port: 465, secure: true },
+            { host: 'smtp.gmail.com', port: 587, secure: false }
+          ]
+        : [
+            { host: smtpHost, port: smtpPort, secure: smtpPort === 465 },
+            { host: smtpHost, port: 587, secure: false }
+          ];
 
-      // Update in-memory config if test succeeds
-      dynamicSmtpConfig = {
-        host: smtpHost,
-        port: smtpPort,
-        user: smtpUser,
-        pass: smtpPass,
-        fromName: senderName,
-        enabled: true
-      };
+      for (const pConfig of attemptPorts) {
+        try {
+          console.log(`[SMTP TEST] Testando ${pConfig.host}:${pConfig.port} (secure: ${pConfig.secure})...`);
+          const transporter = nodemailer.createTransport({
+            ...pConfig,
+            auth: { user: smtpUser, pass: cleanPass },
+            connectionTimeout: 8000,
+            greetingTimeout: 8000,
+            socketTimeout: 10000,
+            tls: { rejectUnauthorized: false }
+          });
 
-      return res.json({
-        success: true,
-        message: `E-mail de teste enviado com SUCESSO para ${targetRecipient}! Verifique a caixa de entrada.`
-      });
-    } catch (err: any) {
-      console.error('[SMTP TEST ERROR]', err?.message);
-      let errMsg = err?.message || 'Erro ao conectar ao servidor de e-mail.';
+          const targetRecipient = (testEmail || smtpUser).trim();
+
+          const info = await transporter.sendMail({
+            from: `"${senderName}" <${smtpUser}>`,
+            to: targetRecipient,
+            subject: '✅ BJJCRON — Conexão de E-mail Testada com Sucesso!',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 28px; border-radius: 16px; border: 1px solid #334155;">
+                <h2 style="color: #f59e0b; margin-top: 0; font-size: 20px;">✓ Servidor de E-mail Ativo!</h2>
+                <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+                  O sistema <strong>BJJCRON</strong> conectou com sucesso à sua conta do Gmail (<strong>${smtpUser}</strong>) via porta ${pConfig.port}.
+                </p>
+                <div style="background: #1e293b; border: 1px solid #10b981; padding: 16px; border-radius: 12px; margin: 16px 0; color: #10b981; font-weight: bold; font-size: 13px;">
+                  ✓ Disparos automáticos ativados para mensalidades, cobranças e avisos aos atletas.
+                </div>
+                <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
+                <span style="font-size: 11px; color: #64748b;">E-mail gerado pelo BJJCRON em ${new Date().toLocaleString('pt-BR')}</span>
+              </div>
+            `
+          });
+
+          sendResult = { messageId: info.messageId, targetRecipient, port: pConfig.port };
+          break;
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[SMTP TEST FAILED port ${pConfig.port}]`, err?.message);
+        }
+      }
+
+      if (sendResult) {
+        // Update in-memory config if test succeeds
+        dynamicSmtpConfig = {
+          host: smtpHost,
+          port: sendResult.port,
+          user: smtpUser,
+          pass: cleanPass,
+          fromName: senderName,
+          enabled: true
+        };
+
+        return res.json({
+          success: true,
+          message: `E-mail de teste entregue com SUCESSO via porta ${sendResult.port} para ${sendResult.targetRecipient}! Verifique a caixa de entrada.`
+        });
+      }
+
+      console.error('[SMTP TEST ERROR FINAL]', lastError?.message);
+      let errMsg = lastError?.message || 'Erro ao conectar ao servidor de e-mail.';
       if (errMsg.includes('535') || errMsg.includes('BadCredentials') || errMsg.includes('Username and Password not accepted')) {
-        errMsg = 'Senha de App incorreta ou rejeitada pelo Google. Certifique-se de que a Verificação em duas etapas está ativada na sua conta Google e crie uma "Senha de app" de 16 caracteres em myaccount.google.com/apppasswords.';
+        errMsg = 'Senha de App incorreta ou rejeitada pelo Google. Ative a "Verificação em duas etapas" no Google e crie uma "Senha de app" de 16 caracteres em myaccount.google.com/apppasswords.';
       }
       return res.status(400).json({
         success: false,
         message: `Falha na autenticação do Gmail: ${errMsg}`
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        message: `Erro interno ao testar SMTP: ${err?.message}`
       });
     }
   });
@@ -339,90 +360,81 @@ async function startServer() {
         </div>
       `;
 
-      // 1) Primary SMTP Attempt with short 4s connection timeout
+      // Attempt SMTP dispatch with dual ports (465 & 587)
       if (smtpUser && smtpPass) {
-        try {
-          console.log(`[BJJCRON EMAIL ALUNO] Enviando e-mail REAL via SMTP (${smtpUser}) para ${recipientEmail}...`);
-          const isGmail = smtpHost.includes('gmail');
-          const transporter = nodemailer.createTransport(
-            isGmail
-              ? {
-                  service: 'gmail',
-                  auth: { user: smtpUser, pass: smtpPass },
-                  connectionTimeout: 4000,
-                  greetingTimeout: 4000,
-                  socketTimeout: 5000,
-                  tls: { rejectUnauthorized: false }
-                }
-              : {
-                  host: smtpHost,
-                  port: smtpPort,
-                  secure: smtpPort === 465,
-                  auth: { user: smtpUser, pass: smtpPass },
-                  connectionTimeout: 4000,
-                  greetingTimeout: 4000,
-                  socketTimeout: 5000,
-                  tls: { rejectUnauthorized: false }
-                }
-          );
+        const isGmail = smtpHost.includes('gmail');
+        const cleanPass = smtpPass.trim().replace(/\s+/g, '');
 
-          const mailOptions = {
-            from: `"${senderName}" <${smtpUser}>`,
-            to: recipientEmail,
-            subject: subject,
-            html: htmlContent
-          };
+        const attemptPorts = isGmail
+          ? [
+              { host: 'smtp.gmail.com', port: 465, secure: true },
+              { host: 'smtp.gmail.com', port: 587, secure: false }
+            ]
+          : [
+              { host: smtpHost, port: smtpPort, secure: smtpPort === 465 },
+              { host: smtpHost, port: 587, secure: false }
+            ];
 
-          const info = await transporter.sendMail(mailOptions);
-          console.log(`[BJJCRON EMAIL ALUNO] Sucesso SMTP! MessageId: ${info.messageId}`);
+        let sendResult: any = null;
+        let lastError: any = null;
+
+        for (const pConfig of attemptPorts) {
+          try {
+            console.log(`[BJJCRON EMAIL ALUNO] Disparando e-mail via ${pConfig.host}:${pConfig.port} para ${recipientEmail}...`);
+            const transporter = nodemailer.createTransport({
+              ...pConfig,
+              auth: { user: smtpUser, pass: cleanPass },
+              connectionTimeout: 8000,
+              greetingTimeout: 8000,
+              socketTimeout: 10000,
+              tls: { rejectUnauthorized: false }
+            });
+
+            const info = await transporter.sendMail({
+              from: `"${senderName}" <${smtpUser}>`,
+              to: recipientEmail,
+              subject: subject,
+              html: htmlContent
+            });
+
+            sendResult = { messageId: info.messageId, port: pConfig.port };
+            console.log(`[BJJCRON EMAIL ALUNO] Sucesso no envio SMTP via porta ${pConfig.port}! MessageId: ${info.messageId}`);
+            break;
+          } catch (smtpErr: any) {
+            lastError = smtpErr;
+            console.error(`[BJJCRON EMAIL ALUNO] Falha no SMTP porta ${pConfig.port}:`, smtpErr?.message);
+          }
+        }
+
+        if (sendResult) {
           return res.json({
             success: true,
             method: 'smtp',
-            message: `E-mail enviado com SUCESSO via Gmail (${smtpUser}) para ${recipientEmail}!`
+            message: `✅ E-mail enviado com SUCESSO via Gmail (${smtpUser}) para ${recipientEmail}! Verifique a caixa de entrada (ou spam) do aluno.`
           });
-        } catch (smtpErr: any) {
-          console.error(`[BJJCRON EMAIL ALUNO] SMTP falhou/timeout:`, smtpErr?.message);
         }
-      }
 
-      // 2) Relay Fallback
-      try {
-        console.log(`[BJJCRON EMAIL ALUNO] Tentando via Web Relay para ${recipientEmail}...`);
-        const relayRes = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipientEmail)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({
-            _subject: `${senderAcademy}: ${subject}`,
-            _template: 'box',
-            Atleta: recipientName,
-            Assunto: subject,
-            Mensagem: body,
-            Academia: senderAcademy
-          })
+        let errDetail = lastError?.message || 'Falha de conexão com o Gmail.';
+        if (errDetail.includes('535') || errDetail.includes('BadCredentials') || errDetail.includes('Username and Password not accepted')) {
+          errDetail = 'Senha de App incorreta ou rejeitada pelo Google. Ative a "Verificação em duas etapas" no Google e crie uma "Senha de app" de 16 caracteres em myaccount.google.com/apppasswords.';
+        }
+
+        return res.status(400).json({
+          success: false,
+          message: `❌ Falha ao enviar e-mail via servidor (${smtpUser}): ${errDetail}`
         });
-        if (relayRes.ok) {
-          return res.json({
-            success: true,
-            method: 'relay',
-            message: `E-mail entregue com SUCESSO para ${recipientEmail}!`
-          });
-        }
-      } catch (rErr: any) {
-        console.warn(`[BJJCRON EMAIL ALUNO] Relay fallback:`, rErr?.message);
       }
 
-      // 3) Guaranteed Graceful Success Response (allows user to also click "Abrir no Gmail")
-      return res.json({
-        success: true,
-        method: 'web_ready',
-        message: `Comunicado registrado para o atleta! Para envio direto pelo seu Gmail pessoal, clique no botão "Abrir no Gmail" abaixo.`
+      // If no SMTP configured
+      return res.status(400).json({
+        success: false,
+        message: '⚠️ Servidor de e-mail não configurado. Cadastre seu Gmail e Senha de App de 16 caracteres em Configurações > Servidor de E-mail, ou use o botão "Abrir no Gmail" abaixo.'
       });
     } catch (error: any) {
       console.error(`[BJJCRON EMAIL ALUNO] Erro geral:`, error?.message);
-      return res.json({
-        success: true,
-        method: 'web_ready',
-        message: `Comunicado gerado com sucesso! Utilize o botão "Abrir no Gmail" para envio imediato.`
+      return res.status(500).json({
+        success: false,
+        message: `Erro interno ao enviar e-mail: ${error?.message || 'Erro no servidor'}`
       });
     }
   });
