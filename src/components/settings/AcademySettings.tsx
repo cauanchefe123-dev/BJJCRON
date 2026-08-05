@@ -6,8 +6,7 @@ import { BeltType } from '../../types';
 import { 
   Settings, Save, RefreshCw, Database, Shield, CheckCircle2, AlertCircle, 
   Upload, Image as ImageIcon, Sparkles, Users, UserCheck, UserX, Mail, 
-  Phone, Clock, BadgeAlert, Award, ChevronRight, Trash2, FlaskConical,
-  ShieldCheck, Download, FileUp, Layers
+  Phone, Clock, BadgeAlert, Award, ChevronRight, Trash2
 } from 'lucide-react';
 
 const LOGO_PRESETS = [
@@ -35,8 +34,6 @@ export const AcademySettings: React.FC = () => {
     updateAcademyConfig, 
     resetToDefaultData, 
     clearAllDataToEmpty, 
-    exportDatabaseJSON, 
-    importDatabaseJSON, 
     students, 
     updateStudent 
   } = useData();
@@ -54,44 +51,10 @@ export const AcademySettings: React.FC = () => {
     email: academyConfig.email,
     address: academyConfig.address,
     pixKey: academyConfig.pixKey,
-    environmentMode: academyConfig.environmentMode || 'HOMOLOGATION',
     logoUrl: academyConfig.logoUrl || '',
     supabaseUrl: academyConfig.supabaseConfig?.url || '',
     supabaseAnonKey: academyConfig.supabaseConfig?.anonKey || '',
   });
-
-  const handleExportBackup = () => {
-    const jsonStr = exportDatabaseJSON();
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bjjcron_banco_fixo_backup_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setToastMsg('📦 Backup do banco de dados baixado com sucesso!');
-    setTimeout(() => setToastMsg(null), 4000);
-  };
-
-  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = event.target?.result as string;
-        if (content) {
-          const res = importDatabaseJSON(content);
-          if (res.success) {
-            setToastMsg(`✅ ${res.message}`);
-          } else {
-            setToastMsg(`❌ ${res.message}`);
-          }
-          setTimeout(() => setToastMsg(null), 5000);
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -169,7 +132,6 @@ export const AcademySettings: React.FC = () => {
       address: formData.address,
       pixKey: formData.pixKey,
       logoUrl: formData.logoUrl,
-      environmentMode: formData.environmentMode as 'HOMOLOGATION' | 'PRODUCTION',
       supabaseConfig: {
         url: formData.supabaseUrl,
         anonKey: formData.supabaseAnonKey,
@@ -436,104 +398,6 @@ export const AcademySettings: React.FC = () => {
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
                 />
-              </div>
-            </div>
-          </div>
-
-          {/* AMBIENTE DE OPERAÇÃO & BANCO DE DADOS FIXO */}
-          <div className="space-y-4 pt-4 border-t border-slate-800">
-            <div className="flex items-center gap-2">
-              <Database className="w-5 h-5 text-amber-400" />
-              <h4 className="font-extrabold text-base text-slate-100">
-                Ambiente de Operação & Banco de Dados Fixo
-              </h4>
-            </div>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              Escolha o modo de funcionamento do sistema BJJCRON ou faça a gestão completa do backup em arquivo fixo do banco de dados local.
-            </p>
-
-            {/* Environment Mode Selector Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, environmentMode: 'HOMOLOGATION' })}
-                className={`p-4 rounded-xl border text-left transition-all relative ${
-                  formData.environmentMode === 'HOMOLOGATION'
-                    ? 'bg-amber-500/10 border-amber-500 text-amber-200 ring-2 ring-amber-500/40'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="flex items-center gap-2 font-black text-sm text-amber-400">
-                    <FlaskConical className="w-4 h-4" />
-                    Ambiente de Homologação
-                  </span>
-                  {formData.environmentMode === 'HOMOLOGATION' && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500 text-slate-950">
-                      ATIVO
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-300">
-                  Modo de testes ativado. Inclui robôs e dados demonstrativos para simulação livre de chamadas, graduações e aprovações.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, environmentMode: 'PRODUCTION' })}
-                className={`p-4 rounded-xl border text-left transition-all relative ${
-                  formData.environmentMode === 'PRODUCTION'
-                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-200 ring-2 ring-emerald-500/40'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="flex items-center gap-2 font-black text-sm text-emerald-400">
-                    <ShieldCheck className="w-4 h-4" />
-                    Ambiente de Produção (Banco Fixo)
-                  </span>
-                  {formData.environmentMode === 'PRODUCTION' && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500 text-slate-950">
-                      ATIVO
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-300">
-                  Modo oficial da academia. Persiste e fixa apenas dados oficiais reais de atletas, frequências e mensalidades.
-                </p>
-              </button>
-            </div>
-
-            {/* Database Export / Import / Backup Box */}
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
-              <h5 className="font-bold text-xs text-slate-200 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-amber-400" />
-                Backup & Restauração em Arquivo Fixo (.JSON)
-              </h5>
-              <p className="text-[11px] text-slate-400">
-                Você pode exportar uma cópia completa de segurança do banco de dados (alunos, faixas, presenças, pagamentos) para o seu dispositivo, ou restaurar um backup existente a qualquer momento:
-              </p>
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={handleExportBackup}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-bold transition-all"
-                >
-                  <Download className="w-4 h-4 text-amber-400" />
-                  Baixar Backup do Banco (.JSON)
-                </button>
-
-                <label className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-bold cursor-pointer transition-all">
-                  <FileUp className="w-4 h-4 text-emerald-400" />
-                  Carregar Backup (.JSON)
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImportBackup}
-                    className="hidden"
-                  />
-                </label>
               </div>
             </div>
           </div>
