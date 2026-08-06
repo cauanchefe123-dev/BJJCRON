@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
 import { BJJClass } from '../../types';
-import { CalendarDays, Clock, Plus, Users, Trash2, Edit3, CheckCircle, X } from 'lucide-react';
+import { CalendarDays, Clock, Plus, Users, Trash2, Edit3, Target, Sparkles, X, Video, Play, ExternalLink } from 'lucide-react';
+import { TechniqueVideoModal } from '../common/TechniqueVideoModal';
 
 export const ClassManager: React.FC = () => {
-  const { classes, teachers, addClass, deleteClass } = useData();
+  const { classes, teachers, addClass, updateClass, deleteClass } = useData();
 
-  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+
+  const [selectedVideoClass, setSelectedVideoClass] = useState<BJJClass | null>(null);
+
   const [formData, setFormData] = useState({
     title: '',
     professorName: teachers[0]?.name || 'Prof. Gabriel "Fera" Santos',
@@ -14,24 +19,26 @@ export const ClassManager: React.FC = () => {
     daysOfWeek: [1, 3, 5], // Seg, Qua, Sex
     time: '19:00',
     durationMinutes: 90,
-    category: 'FUNDAMENTAL' as const,
+    category: 'FUNDAMENTAL' as BJJClass['category'],
     maxCapacity: 30,
     active: true,
     description: '',
+    weeklyFocus: '',
+    weeklyFocusVideoUrl: '',
   });
+
+  const [quickFocusClass, setQuickFocusClass] = useState<BJJClass | null>(null);
+  const [quickFocusText, setQuickFocusText] = useState('');
+  const [quickFocusVideoUrl, setQuickFocusVideoUrl] = useState('');
 
   const daysLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-  const handleAddSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title) return;
-
-    addClass(formData);
-    setIsAddOpen(false);
+  const handleOpenAdd = () => {
+    setEditingClassId(null);
     setFormData({
       title: '',
-      professorName: 'Prof. Gabriel "Fera"',
-      professorId: 'user-prof-1',
+      professorName: teachers[0]?.name || 'Prof. Gabriel "Fera" Santos',
+      professorId: teachers[0]?.id || 'prof-1',
       daysOfWeek: [1, 3, 5],
       time: '19:00',
       durationMinutes: 90,
@@ -39,7 +46,55 @@ export const ClassManager: React.FC = () => {
       maxCapacity: 30,
       active: true,
       description: '',
+      weeklyFocus: '',
+      weeklyFocusVideoUrl: '',
     });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (c: BJJClass) => {
+    setEditingClassId(c.id);
+    setFormData({
+      title: c.title,
+      professorName: c.professorName,
+      professorId: c.professorId,
+      daysOfWeek: [...c.daysOfWeek],
+      time: c.time,
+      durationMinutes: c.durationMinutes,
+      category: c.category,
+      maxCapacity: c.maxCapacity,
+      active: c.active,
+      description: c.description || '',
+      weeklyFocus: c.weeklyFocus || '',
+      weeklyFocusVideoUrl: c.weeklyFocusVideoUrl || '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title) return;
+
+    if (editingClassId) {
+      updateClass(editingClassId, formData);
+    } else {
+      addClass(formData);
+    }
+
+    setIsModalOpen(false);
+    setEditingClassId(null);
+  };
+
+  const handleSaveQuickFocus = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickFocusClass) return;
+    updateClass(quickFocusClass.id, {
+      weeklyFocus: quickFocusText,
+      weeklyFocusVideoUrl: quickFocusVideoUrl,
+    });
+    setQuickFocusClass(null);
+    setQuickFocusText('');
+    setQuickFocusVideoUrl('');
   };
 
   const toggleDay = (dayIndex: number) => {
@@ -64,12 +119,12 @@ export const ClassManager: React.FC = () => {
             Turmas e Grade de Aulas
           </h3>
           <p className="text-xs text-slate-400">
-            Horários de kimono, No-Gi, Kids e Open Mat da academia.
+            Gerencie horários de kimono, No-Gi, Kids, Open Mat e defina o <strong>Foco da Semana</strong> para os alunos!
           </p>
         </div>
 
         <button
-          onClick={() => setIsAddOpen(true)}
+          onClick={handleOpenAdd}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition-all"
         >
           <Plus className="w-4 h-4" />
@@ -80,7 +135,7 @@ export const ClassManager: React.FC = () => {
       {/* Class Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {classes.map(c => (
-          <div key={c.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-4 shadow-lg flex flex-col justify-between">
+          <div key={c.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-4 shadow-lg flex flex-col justify-between hover:border-slate-700 transition-all">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-amber-400 flex items-center gap-1">
@@ -97,7 +152,49 @@ export const ClassManager: React.FC = () => {
                 <p className="text-xs text-slate-400">Instrutor: {c.professorName}</p>
               </div>
 
-              <p className="text-xs text-slate-400 line-clamp-2">{c.description}</p>
+              {c.description && (
+                <p className="text-xs text-slate-400 line-clamp-2">{c.description}</p>
+              )}
+
+              {/* Weekly Focus Box */}
+              <div className="bg-gradient-to-r from-amber-950/60 via-slate-950 to-amber-950/40 border border-amber-500/40 rounded-xl p-3 space-y-2 relative group">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase text-amber-400 flex items-center gap-1">
+                    <Target className="w-3.5 h-3.5 text-amber-400" />
+                    Foco da Semana
+                  </span>
+                  <button
+                    onClick={() => {
+                      setQuickFocusClass(c);
+                      setQuickFocusText(c.weeklyFocus || '');
+                      setQuickFocusVideoUrl(c.weeklyFocusVideoUrl || '');
+                    }}
+                    className="text-[10px] text-amber-400 hover:text-amber-300 font-bold hover:underline flex items-center gap-1"
+                    title="Editar Foco da Semana"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    {c.weeklyFocus ? 'Alterar' : '+ Definir Foco'}
+                  </button>
+                </div>
+                <p className="text-xs font-bold text-slate-200">
+                  {c.weeklyFocus ? (
+                    <span>🎯 {c.weeklyFocus}</span>
+                  ) : (
+                    <span className="text-slate-500 italic font-normal">Nenhum foco definido para esta semana.</span>
+                  )}
+                </p>
+
+                {c.weeklyFocusVideoUrl && (
+                  <button
+                    onClick={() => setSelectedVideoClass(c)}
+                    className="w-full mt-1.5 py-1.5 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                  >
+                    <Video className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Ver Vídeo da Posição</span>
+                    <Play className="w-3 h-3 fill-amber-400 text-amber-400 ml-0.5" />
+                  </button>
+                )}
+              </div>
 
               {/* Days badging */}
               <div className="flex items-center gap-1 pt-1">
@@ -125,36 +222,113 @@ export const ClassManager: React.FC = () => {
                 Limite: {c.maxCapacity} alunos
               </span>
 
-              <button
-                onClick={() => {
-                  if (confirm(`Excluir a turma ${c.title}?`)) {
-                    deleteClass(c.id);
-                  }
-                }}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-700"
-                title="Excluir Turma"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleOpenEdit(c)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-900/60 hover:bg-blue-800 text-blue-200 hover:text-white border border-blue-700/50 text-xs font-bold transition-all"
+                  title="Editar Turma Completa"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-blue-300" />
+                  Editar
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Excluir a turma ${c.title}?`)) {
+                      deleteClass(c.id);
+                    }
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-slate-700 transition-all"
+                  title="Excluir Turma"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Add Class Modal */}
-      {isAddOpen && (
+      {/* Quick Edit Weekly Focus Modal */}
+      {quickFocusClass && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-white space-y-6 shadow-2xl relative">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-2xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl relative">
             <button
-              onClick={() => setIsAddOpen(false)}
+              onClick={() => setQuickFocusClass(null)}
               className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="font-bold text-lg text-slate-100">Criar Nova Turma de Jiu-Jitsu</h3>
+            <div className="flex items-center gap-2 text-amber-400">
+              <Target className="w-6 h-6" />
+              <h3 className="font-bold text-lg text-slate-100">Foco Técnico da Semana</h3>
+            </div>
+            <p className="text-xs text-slate-400">
+              Turma: <strong>{quickFocusClass.title}</strong> — Esse foco aparecerá em destaque no painel dos alunos!
+            </p>
 
-            <form onSubmit={handleAddSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveQuickFocus} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Técnica / Posição da Semana *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={quickFocusText}
+                  onChange={e => setQuickFocusText(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                  placeholder="Ex: Passagem de Guarda Emborcada & Raspagem De La Riva"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">🎥 Link do Vídeo da Posição (Opcional)</label>
+                <input
+                  type="url"
+                  value={quickFocusVideoUrl}
+                  onChange={e => setQuickFocusVideoUrl(e.target.value)}
+                  className="w-full bg-slate-950 border border-amber-500/30 rounded-xl p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                  placeholder="Ex: https://www.youtube.com/watch?v=VIDEO_ID ou Instagram"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">Cole um link do YouTube, Instagram ou MP4 para os alunos assistirem.</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickFocusClass(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold shadow-md flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Salvar Foco da Semana
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Class Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-white space-y-6 shadow-2xl relative my-8">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="font-bold text-lg text-slate-100">
+              {editingClassId ? 'Atualizar Turma de Jiu-Jitsu' : 'Criar Nova Turma de Jiu-Jitsu'}
+            </h3>
+
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="text-slate-300 font-bold block mb-1">Nome / Título da Turma *</label>
                 <input
@@ -251,7 +425,30 @@ export const ClassManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-slate-300 font-bold block mb-1">Descrição do Foco do Treino</label>
+                <label className="text-slate-300 font-bold block mb-1">🎯 Foco Técnico da Semana</label>
+                <input
+                  type="text"
+                  value={formData.weeklyFocus}
+                  onChange={e => setFormData({ ...formData, weeklyFocus: e.target.value })}
+                  className="w-full bg-slate-950 border border-amber-500/40 rounded-lg p-2.5 text-amber-200 focus:ring-2 focus:ring-amber-500 outline-none"
+                  placeholder="Ex: Passagem de Guarda Emborcada & Raspagem De La Riva"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">Aparece em destaque no painel do aluno.</span>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">🎥 Link do Vídeo da Posição do Dia/Semana</label>
+                <input
+                  type="url"
+                  value={formData.weeklyFocusVideoUrl}
+                  onChange={e => setFormData({ ...formData, weeklyFocusVideoUrl: e.target.value })}
+                  className="w-full bg-slate-950 border border-amber-500/30 rounded-lg p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Descrição Geral da Turma</label>
                 <textarea
                   rows={2}
                   value={formData.description}
@@ -263,7 +460,7 @@ export const ClassManager: React.FC = () => {
               <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsAddOpen(false)}
+                  onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold"
                 >
                   Cancelar
@@ -272,13 +469,22 @@ export const ClassManager: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-md"
                 >
-                  Salvar Turma
+                  {editingClassId ? 'Salvar Alterações' : 'Criar Turma'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+      {/* Technique Video Modal */}
+      <TechniqueVideoModal
+        isOpen={!!selectedVideoClass}
+        onClose={() => setSelectedVideoClass(null)}
+        title={selectedVideoClass?.title || 'Vídeo da Posição'}
+        focusText={selectedVideoClass?.weeklyFocus}
+        videoUrl={selectedVideoClass?.weeklyFocusVideoUrl}
+      />
     </div>
   );
 };
+

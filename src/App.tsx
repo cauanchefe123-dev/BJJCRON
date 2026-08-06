@@ -42,6 +42,7 @@ import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { PaymentRecord, Student } from './types';
 import { AuthModal } from './components/auth/AuthModal';
 import { resolveStudentForUser } from './constants/avatar';
+import { InAppToastNotification } from './components/notifications/InAppToastNotification';
 
 function MainApp() {
   const { currentUser } = useAuth();
@@ -237,6 +238,9 @@ function MainApp() {
         payment={pixModalPayment}
         onClose={() => setPixModalPayment(null)}
       />
+
+      {/* Global In-App Floating Toast Notification */}
+      <InAppToastNotification />
     </div>
   );
 }

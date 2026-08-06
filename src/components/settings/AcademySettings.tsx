@@ -39,7 +39,7 @@ export const AcademySettings: React.FC = () => {
   } = useData();
   const { approveUser, rejectUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'info' | 'smtp' | 'requests'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'smtp' | 'requests' | 'mockups'>('info');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -320,6 +320,18 @@ export const AcademySettings: React.FC = () => {
                 {pendingStudents.length}
               </span>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('mockups')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'mockups'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <ImageIcon className="w-4 h-4" />
+            📸 Imagens HD (Vídeos)
           </button>
         </div>
       </div>
@@ -946,6 +958,262 @@ export const AcademySettings: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+      {/* Tab 4: Mockups HD */}
+      {activeTab === 'mockups' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div>
+            <h4 className="text-lg font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              Galeria de Imagens Ultra HD do BJJCRON (Vídeos & Divulgação)
+            </h4>
+            <p className="text-xs text-slate-400 mt-1">
+              Imagens geradas em alta definição (8K/HD) prontas para carregar no <strong>HeyGen</strong>, Canva, CapCut, Instagram e YouTube!
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 1. Mobile Mockup */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-amber-500/50 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+                    📱 Celular (App Geral)
+                  </span>
+                  <span className="text-[10px] text-slate-400">9:16 Vertical</span>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900 group relative">
+                  <img
+                    src="/mockups/mobile.jpg"
+                    alt="Mockup Celular BJJCRON"
+                    className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <a
+                    href="/mockups/mobile.jpg"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-amber-400 font-bold text-xs gap-2"
+                  >
+                    <span>🔍 Visualizar HD</span>
+                  </a>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-300">
+                  Ideal para apresentar o aplicativo do aluno em Stories e Reels do Instagram.
+                </p>
+                <a
+                  href="/mockups/mobile.jpg"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-lg text-center shadow transition-all"
+                >
+                  📥 Baixar Celular HD
+                </a>
+              </div>
+            </div>
+
+            {/* 2. QR Code Checkin Mobile */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-amber-500/50 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+                    📲 Chamada por QR Code
+                  </span>
+                  <span className="text-[10px] text-slate-400">9:16 Vertical</span>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900 group relative">
+                  <img
+                    src="/mockups/qr_checkin.jpg"
+                    alt="Mockup QR Code Check-in"
+                    className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <a
+                    href="/mockups/qr_checkin.jpg"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-amber-400 font-bold text-xs gap-2"
+                  >
+                    <span>🔍 Visualizar HD</span>
+                  </a>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-300">
+                  Demonstração da tecnologia de chamada rápida por QR Code na entrada do tatami.
+                </p>
+                <a
+                  href="/mockups/qr_checkin.jpg"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-lg text-center shadow transition-all"
+                >
+                  📥 Baixar QR Code HD
+                </a>
+              </div>
+            </div>
+
+            {/* 3. Notebook Management */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-amber-500/50 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+                    💻 Notebook (Gestão)
+                  </span>
+                  <span className="text-[10px] text-slate-400">16:9 Desktop</span>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900 group relative">
+                  <img
+                    src="/mockups/laptop.jpg"
+                    alt="Mockup Notebook BJJCRON"
+                    className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <a
+                    href="/mockups/laptop.jpg"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-amber-400 font-bold text-xs gap-2"
+                  >
+                    <span>🔍 Visualizar HD</span>
+                  </a>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-300">
+                  Painel de controle para o professor administrar alunos, presenças e finanças.
+                </p>
+                <a
+                  href="/mockups/laptop.jpg"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-lg text-center shadow transition-all"
+                >
+                  📥 Baixar Notebook HD
+                </a>
+              </div>
+            </div>
+
+            {/* 4. Financial Dashboard */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-amber-500/50 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+                    📊 Gestão Financeira
+                  </span>
+                  <span className="text-[10px] text-slate-400">16:9 Desktop</span>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900 group relative">
+                  <img
+                    src="/mockups/finance.jpg"
+                    alt="Mockup Financeiro BJJCRON"
+                    className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <a
+                    href="/mockups/finance.jpg"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-amber-400 font-bold text-xs gap-2"
+                  >
+                    <span>🔍 Visualizar HD</span>
+                  </a>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-300">
+                  Relatórios de arrecadação, mensalidades, inadimplência e projeção de receita.
+                </p>
+                <a
+                  href="/mockups/finance.jpg"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-lg text-center shadow transition-all"
+                >
+                  📥 Baixar Financeiro HD
+                </a>
+              </div>
+            </div>
+
+            {/* 5. Ranking & Graduation */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-amber-500/50 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+                    🏆 Ranking & Graduação
+                  </span>
+                  <span className="text-[10px] text-slate-400">16:9 Tablet</span>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900 group relative">
+                  <img
+                    src="/mockups/ranking.jpg"
+                    alt="Mockup Ranking BJJCRON"
+                    className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <a
+                    href="/mockups/ranking.jpg"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-amber-400 font-bold text-xs gap-2"
+                  >
+                    <span>🔍 Visualizar HD</span>
+                  </a>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-300">
+                  Leaderboard de presença mensal, graus da faixa e medalhas de destaque.
+                </p>
+                <a
+                  href="/mockups/ranking.jpg"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-lg text-center shadow transition-all"
+                >
+                  📥 Baixar Ranking HD
+                </a>
+              </div>
+            </div>
+
+            {/* 6. Tablet on Tatami */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-amber-500/50 transition-all">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+                    🥋 Tablet no Tatami
+                  </span>
+                  <span className="text-[10px] text-slate-400">4:3 Foto Realista</span>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900 group relative">
+                  <img
+                    src="/mockups/tatami.jpg"
+                    alt="Mockup Tatami BJJCRON"
+                    className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <a
+                    href="/mockups/tatami.jpg"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-amber-400 font-bold text-xs gap-2"
+                  >
+                    <span>🔍 Visualizar HD</span>
+                  </a>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-300">
+                  Foto cinematográfica do aplicativo sendo usado na beira do tatami ao lado do Kimono.
+                </p>
+                <a
+                  href="/mockups/tatami.jpg"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-lg text-center shadow transition-all"
+                >
+                  📥 Baixar Tatami HD
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -5,7 +5,9 @@ import { BeltBadge } from '../belts/BeltBadge';
 import { getStudentAvatar, resolveStudentForUser } from '../../constants/avatar';
 import { DigitalMembershipCard } from '../card/DigitalMembershipCard';
 import { getTrainingTimeText } from '../../utils/trainingTime';
-import { Award, QrCode, CreditCard, BookOpen, Clock, Calendar, CheckCircle, AlertTriangle, ArrowRight, Flame, Sparkles, Edit3, Shield } from 'lucide-react';
+import { Award, QrCode, CreditCard, BookOpen, Clock, Calendar, CheckCircle, AlertTriangle, ArrowRight, Flame, Sparkles, Edit3, Shield, Target, Video, Play } from 'lucide-react';
+import { TechniqueVideoModal } from '../common/TechniqueVideoModal';
+import { BJJClass } from '../../types';
 
 interface StudentDashboardProps {
   onNavigate: (tab: string) => void;
@@ -16,7 +18,9 @@ interface StudentDashboardProps {
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, onOpenPixModal, onOpenEditModal, selectedStudentId }) => {
   const { currentUser } = useAuth();
-  const { students, payments, attendances, academyConfig } = useData();
+  const { students, payments, attendances, academyConfig, classes } = useData();
+
+  const [selectedVideoClass, setSelectedVideoClass] = useState<BJJClass | null>(null);
 
   const resolved = resolveStudentForUser(currentUser, students);
   const currentStudent = selectedStudentId
@@ -191,6 +195,72 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
         </div>
       </div>
 
+      {/* Foco Técnico da Semana por Turma */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white space-y-4 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-extrabold text-base text-slate-100 flex items-center gap-2">
+              <Target className="w-5 h-5 text-amber-400" />
+              Foco Técnico da Semana nas Turmas
+            </h3>
+            <p className="text-xs text-slate-400">
+              Acompanhe as posições e técnicas que seu professor definiu para o treino desta semana.
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate('classes')}
+            className="text-xs text-amber-400 font-bold hover:underline"
+          >
+            Ver Grade Completa →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {classes.map(c => (
+            <div
+              key={c.id}
+              className="bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl p-4 space-y-3 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-amber-400 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {c.time} ({c.durationMinutes} min)
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                  {c.category}
+                </span>
+              </div>
+
+              <div>
+                <h4 className="font-extrabold text-sm text-slate-100">{c.title}</h4>
+                <p className="text-xs text-slate-400">Prof. {c.professorName}</p>
+              </div>
+
+              {/* Focus Badge */}
+              <div className="bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/60 border border-amber-500/40 rounded-lg p-2.5 space-y-2">
+                <span className="text-[10px] font-black uppercase text-amber-400 block mb-0.5">
+                  🎯 Foco da Semana:
+                </span>
+                <p className="text-xs font-bold text-amber-100">
+                  {c.weeklyFocus ? c.weeklyFocus : 'Treino geral e aperfeiçoamento de posições.'}
+                </p>
+
+                {c.weeklyFocusVideoUrl && (
+                  <button
+                    onClick={() => setSelectedVideoClass(c)}
+                    className="w-full py-1.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition-all"
+                  >
+                    <Video className="w-4 h-4" />
+                    <span>Assistir Vídeo da Posição</span>
+                    <Play className="w-3 h-3 fill-slate-950 text-slate-950 ml-0.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-1">
@@ -228,6 +298,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
         <DigitalMembershipCard student={currentStudent} />
       </div>
+
+      {/* Technique Video Modal */}
+      <TechniqueVideoModal
+        isOpen={!!selectedVideoClass}
+        onClose={() => setSelectedVideoClass(null)}
+        title={selectedVideoClass?.title || 'Vídeo da Posição'}
+        focusText={selectedVideoClass?.weeklyFocus}
+        videoUrl={selectedVideoClass?.weeklyFocusVideoUrl}
+      />
     </div>
   );
 };

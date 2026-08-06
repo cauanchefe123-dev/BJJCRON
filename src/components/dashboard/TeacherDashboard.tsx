@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import { BeltBadge } from '../belts/BeltBadge';
 import { PendingStudentApprovals } from '../students/PendingStudentApprovals';
-import { QrCode, CalendarDays, Award, Users, CheckCircle, Flame, Clock } from 'lucide-react';
+import { QrCode, CalendarDays, Award, Users, CheckCircle, Flame, Clock, Megaphone, Send, X, Sparkles, Target, Edit3, Video, Play } from 'lucide-react';
+import { TechniqueVideoModal } from '../common/TechniqueVideoModal';
+import { BJJClass } from '../../types';
 
 interface TeacherDashboardProps {
   onNavigate: (tab: string) => void;
@@ -10,10 +13,54 @@ interface TeacherDashboardProps {
 }
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, onOpenCheckin }) => {
-  const { students, classes, attendances } = useData();
+  const { students, classes, attendances, addNotification, updateClass } = useData();
+  const { currentUser } = useAuth();
+
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+  const [noticeData, setNoticeData] = useState({
+    title: '',
+    message: '',
+    targetClassId: 'ALL',
+  });
+
+  const [quickFocusClassId, setQuickFocusClassId] = useState<string | null>(null);
+  const [quickFocusText, setQuickFocusText] = useState('');
+  const [quickFocusVideoUrl, setQuickFocusVideoUrl] = useState('');
+  const [selectedVideoClass, setSelectedVideoClass] = useState<BJJClass | null>(null);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayAttendances = attendances.filter(a => a.date === todayStr);
+
+  const handleSendNotice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noticeData.title || !noticeData.message) return;
+
+    const targetClass = classes.find(c => c.id === noticeData.targetClassId);
+
+    addNotification({
+      title: noticeData.title,
+      message: noticeData.message,
+      type: 'TEACHER_NOTICE',
+      targetClassId: noticeData.targetClassId === 'ALL' ? undefined : noticeData.targetClassId,
+      targetClassName: targetClass ? targetClass.title : 'Todas as Turmas',
+      authorName: currentUser?.name || 'Prof. Gabriel "Fera" Santos',
+    });
+
+    setIsNoticeModalOpen(false);
+    setNoticeData({ title: '', message: '', targetClassId: 'ALL' });
+  };
+
+  const handleSaveQuickFocus = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickFocusClassId) return;
+    updateClass(quickFocusClassId, {
+      weeklyFocus: quickFocusText,
+      weeklyFocusVideoUrl: quickFocusVideoUrl,
+    });
+    setQuickFocusClassId(null);
+    setQuickFocusText('');
+    setQuickFocusVideoUrl('');
+  };
 
   return (
     <div className="space-y-6">
@@ -31,20 +78,27 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, 
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setIsNoticeModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-lg transition-all"
+          >
+            <Megaphone className="w-4 h-4" />
+            Disparar Aviso Push aos Alunos
+          </button>
           <button
             onClick={onOpenCheckin}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-lg border border-slate-700 transition-all"
           >
-            <QrCode className="w-4 h-4" />
-            Escanear Presença de Aluno
+            <QrCode className="w-4 h-4 text-amber-400" />
+            Escanear Presença
           </button>
           <button
             onClick={() => onNavigate('timer')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg transition-all"
           >
             <Flame className="w-4 h-4 text-amber-400" />
-            Cronômetro de Rola
+            Cronômetro
           </button>
         </div>
       </div>
@@ -86,6 +140,41 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, 
               <div>
                 <h4 className="font-bold text-sm text-slate-100">{c.title}</h4>
                 <p className="text-xs text-slate-400">{c.professorName}</p>
+              </div>
+
+              {/* Foco da Semana */}
+              <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase text-amber-400">
+                    🎯 Foco & Vídeo da Semana:
+                  </span>
+                  <button
+                    onClick={() => {
+                      setQuickFocusClassId(c.id);
+                      setQuickFocusText(c.weeklyFocus || '');
+                      setQuickFocusVideoUrl(c.weeklyFocusVideoUrl || '');
+                    }}
+                    className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 hover:underline"
+                    title="Editar Foco / Anexar Vídeo"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    Editar
+                  </button>
+                </div>
+                <p className="text-xs font-bold text-amber-100">
+                  {c.weeklyFocus || 'Nenhum foco definido.'}
+                </p>
+
+                {c.weeklyFocusVideoUrl && (
+                  <button
+                    onClick={() => setSelectedVideoClass(c)}
+                    className="w-full mt-1 py-1 px-2.5 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center gap-1 transition-all"
+                  >
+                    <Video className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Ver Vídeo Anexado</span>
+                    <Play className="w-3 h-3 fill-amber-400 text-amber-400 ml-0.5" />
+                  </button>
+                )}
               </div>
 
               <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
@@ -133,6 +222,162 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, 
           </div>
         )}
       </div>
+
+      {/* Disparar Aviso Push Modal */}
+      {isNoticeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-2xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => setIsNoticeModalOpen(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2.5 text-amber-400">
+              <Megaphone className="w-6 h-6" />
+              <h3 className="font-extrabold text-lg text-slate-100">Disparar Aviso Push aos Alunos</h3>
+            </div>
+            <p className="text-xs text-slate-400">
+              Sua mensagem será enviada instantaneamente para a Central de Notificações dos alunos e como Alerta Push no navegador.
+            </p>
+
+            <form onSubmit={handleSendNotice} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Turma Destino *</label>
+                <select
+                  value={noticeData.targetClassId}
+                  onChange={e => setNoticeData({ ...noticeData, targetClassId: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  <option value="ALL">📢 Todas as Turmas e Alunos</option>
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>
+                      🥋 {c.title} ({c.time})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Título do Aviso *</label>
+                <input
+                  type="text"
+                  required
+                  value={noticeData.title}
+                  onChange={e => setNoticeData({ ...noticeData, title: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                  placeholder="Ex: Treino Especial de Sábado com Kimono Branco"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Mensagem do Comunicado *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={noticeData.message}
+                  onChange={e => setNoticeData({ ...noticeData, message: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                  placeholder="Ex: Pessoal, neste sábado teremos seminário de raspagens e entrega de graus às 10h. Não percam!"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNoticeModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold shadow-md flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  Enviar Notificação Push
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Quick Edit Focus & Video Modal */}
+      {quickFocusClassId && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-2xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => setQuickFocusClassId(null)}
+              className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 text-amber-400">
+              <Target className="w-6 h-6" />
+              <h3 className="font-bold text-lg text-slate-100">Foco Técnico & Vídeo da Semana</h3>
+            </div>
+            <p className="text-xs text-slate-400">
+              Defina a técnica e anexe um link de vídeo para os alunos assistirem no aplicativo.
+            </p>
+
+            <form onSubmit={handleSaveQuickFocus} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Técnica / Posição da Semana *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={quickFocusText}
+                  onChange={e => setQuickFocusText(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                  placeholder="Ex: Passagem de Guarda Emborcada & Raspagem De La Riva"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">🎥 Link do Vídeo da Posição (YouTube, Instagram, MP4)</label>
+                <input
+                  type="url"
+                  value={quickFocusVideoUrl}
+                  onChange={e => setQuickFocusVideoUrl(e.target.value)}
+                  className="w-full bg-slate-950 border border-amber-500/30 rounded-xl p-2.5 text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none"
+                  placeholder="Ex: https://www.youtube.com/watch?v=VIDEO_ID"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Os alunos verão o botão "Assistir Vídeo da Posição" no painel da turma.
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickFocusClassId(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold shadow-md flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Salvar Foco & Vídeo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Technique Video Modal */}
+      <TechniqueVideoModal
+        isOpen={!!selectedVideoClass}
+        onClose={() => setSelectedVideoClass(null)}
+        title={selectedVideoClass?.title || 'Vídeo da Posição'}
+        focusText={selectedVideoClass?.weeklyFocus}
+        videoUrl={selectedVideoClass?.weeklyFocusVideoUrl}
+      />
     </div>
   );
 };

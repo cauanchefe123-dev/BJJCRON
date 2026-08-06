@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   AcademyConfig,
+  AppNotification,
   AttendanceRecord,
   BeltChangeRequest,
   BeltType,
@@ -47,6 +48,17 @@ interface DataContextType {
   trainingLogs: TrainingLog[];
   teacherObservations: TeacherObservation[];
   academyConfig: AcademyConfig;
+
+  // Notifications & Push Alerts
+  notifications: AppNotification[];
+  activeToastNotif: AppNotification | null;
+  pushPermissionStatus: NotificationPermission;
+  addNotification: (notif: Omit<AppNotification, 'id' | 'createdAt' | 'readBy'>) => AppNotification;
+  markNotificationAsRead: (notificationId: string, userId: string) => void;
+  markAllNotificationsAsRead: (userId: string) => void;
+  deleteNotification: (notificationId: string) => void;
+  requestPushPermission: () => Promise<NotificationPermission>;
+  dismissToastNotif: () => void;
 
   // Student Actions
   addStudent: (student: Omit<Student, 'id' | 'registrationNumber' | 'qrCodeToken' | 'totalClassesAttended' | 'classesSinceLastGraduation'>) => Student;
@@ -148,6 +160,49 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : [];
   });
 
+  const INITIAL_DEFAULT_NOTIFICATIONS: AppNotification[] = [
+    {
+      id: 'notif-1',
+      title: '🎯 Foco Técnico da Semana',
+      message: 'Turma Jiu-Jitsu Noturno: Passagem de Guarda Emborcada & Raspagem De La Riva.',
+      type: 'WEEKLY_FOCUS',
+      targetClassName: 'Jiu-Jitsu Noturno (Kimono)',
+      createdAt: new Date().toISOString(),
+      readBy: [],
+      authorName: 'Prof. Gabriel "Fera" Santos',
+    },
+    {
+      id: 'notif-2',
+      title: '📢 Treino Especial de Sábado',
+      message: 'Neste sábado teremos Aulão Geral de Kimono com entrega de graus. Não falte!',
+      type: 'TEACHER_NOTICE',
+      createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+      readBy: [],
+      authorName: 'Mestre Carlos Gracie',
+    },
+  ];
+
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    const saved = localStorage.getItem('bjjcron_notifications');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_DEFAULT_NOTIFICATIONS;
+      }
+    }
+    return INITIAL_DEFAULT_NOTIFICATIONS;
+  });
+
+  const [activeToastNotif, setActiveToastNotif] = useState<AppNotification | null>(null);
+
+  const [pushPermissionStatus, setPushPermissionStatus] = useState<NotificationPermission>(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'default';
+  });
+
   const [academyConfig, setAcademyConfig] = useState<AcademyConfig>(() => {
     const saved = localStorage.getItem('bjjcron_academy_config');
     if (saved) {
@@ -184,6 +239,97 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => { safeSave('bjjcron_training_logs', trainingLogs); }, [trainingLogs]);
   useEffect(() => { safeSave('bjjcron_teacher_observations', teacherObservations); }, [teacherObservations]);
   useEffect(() => { safeSave('bjjcron_academy_config', academyConfig); }, [academyConfig]);
+  useEffect(() => { safeSave('bjjcron_notifications', notifications); }, [notifications]);
+
+  // Push Notification Handlers
+  const requestPushPermission = async (): Promise<NotificationPermission> => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      try {
+        const res = await Notification.requestPermission();
+        setPushPermissionStatus(res);
+        if (res === 'granted') {
+          try {
+            new Notification('🔔 Notificações BJJCRON Ativadas!', {
+              body: 'Você receberá alertas em tempo real sobre o foco da semana e avisos da academia.',
+              icon: '/logo.svg',
+            });
+          } catch (e) {
+            console.warn('Erro ao abrir notificação de confirmação:', e);
+          }
+        }
+        return res;
+      } catch (err) {
+        console.warn('Erro ao solicitar permissão de Notificação:', err);
+      }
+    }
+    return 'denied';
+  };
+
+  const addNotification = (notifData: Omit<AppNotification, 'id' | 'createdAt' | 'readBy'>): AppNotification => {
+    const newNotif: AppNotification = {
+      ...notifData,
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: new Date().toISOString(),
+      readBy: [],
+    };
+
+    setNotifications(prev => [newNotif, ...prev]);
+    saveToFirestore('notifications', newNotif);
+
+    // Show in-app banner toast
+    setActiveToastNotif(newNotif);
+
+    // Trigger Web Push Notification if browser permission granted
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(newNotif.title, {
+          body: newNotif.message,
+          icon: '/logo.svg',
+        });
+      } catch (e) {
+        console.warn('Web Notification trigger error:', e);
+      }
+    }
+
+    return newNotif;
+  };
+
+  const markNotificationAsRead = (notificationId: string, userId: string) => {
+    if (!userId) return;
+    setNotifications(prev =>
+      prev.map(n => {
+        if (n.id === notificationId && !n.readBy.includes(userId)) {
+          const updated = { ...n, readBy: [...n.readBy, userId] };
+          saveToFirestore('notifications', updated);
+          return updated;
+        }
+        return n;
+      })
+    );
+  };
+
+  const markAllNotificationsAsRead = (userId: string) => {
+    if (!userId) return;
+    setNotifications(prev =>
+      prev.map(n => {
+        if (!n.readBy.includes(userId)) {
+          const updated = { ...n, readBy: [...n.readBy, userId] };
+          saveToFirestore('notifications', updated);
+          return updated;
+        }
+        return n;
+      })
+    );
+  };
+
+  const deleteNotification = (notificationId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    removeFromFirestore('notifications', notificationId);
+  };
+
+  const dismissToastNotif = () => {
+    setActiveToastNotif(null);
+  };
 
   // Real-time Firestore Cloud Synchronization
   useEffect(() => {
@@ -660,6 +806,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateClass = (id: string, updates: Partial<BJJClass>) => {
     let updatedClass: BJJClass | null = null;
+    let oldFocus: string | undefined = undefined;
+
+    const targetClass = classes.find(c => c.id === id);
+    if (targetClass) oldFocus = targetClass.weeklyFocus;
+
     setClasses(prev => {
       const updated = prev.map(c => {
         if (c.id === id) {
@@ -671,7 +822,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('bjjcron_classes', JSON.stringify(updated));
       return updated;
     });
-    if (updatedClass) saveToFirestore('classes', updatedClass);
+
+    if (updatedClass) {
+      saveToFirestore('classes', updatedClass);
+
+      // Auto trigger push notification if weeklyFocus was set or changed
+      if (updates.weeklyFocus !== undefined && updates.weeklyFocus !== oldFocus && updates.weeklyFocus.trim() !== '') {
+        const className = updates.title || targetClass?.title || 'Turma';
+        addNotification({
+          title: `🎯 Novo Foco Técnico: ${className}`,
+          message: `O professor definiu o foco da semana para: "${updates.weeklyFocus}"`,
+          type: 'WEEKLY_FOCUS',
+          targetClassId: id,
+          targetClassName: className,
+          authorName: updates.professorName || targetClass?.professorName || 'Professor / Mestre',
+        });
+      }
+    }
 
     fetch(`/api/classes/${encodeURIComponent(id)}`, {
       method: 'PUT',
@@ -1079,6 +1246,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trainingLogs,
       teacherObservations,
       academyConfig,
+      notifications,
+      activeToastNotif,
+      pushPermissionStatus,
+      addNotification,
+      markNotificationAsRead,
+      markAllNotificationsAsRead,
+      deleteNotification,
+      requestPushPermission,
+      dismissToastNotif,
       addStudent,
       updateStudent,
       deleteStudent,
